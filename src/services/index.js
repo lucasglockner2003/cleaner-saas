@@ -1,0 +1,15 @@
+export * as clientsService from "./clients/clientsService";
+export * as scheduleService from "./schedule/scheduleService";
+export * as visitsService from "./visits/visitsService";
+export * as employeesService from "./employees/employeesService";
+export * as teamsService from "./teams/teamsService";
+export * as financeService from "./finance/financeService";
+export * as productsService from "./products/productsService";
+export * as remindersService from "./reminders/remindersService";
+export * as invoicesService from "./invoices/invoicesService";
+export * as photoStorageService from "./photos/photoStorageService";
+export * as routeOptimizationService from "./routes/routeOptimizationService";
+export * as customerPortalService from "./portal/customerPortalService";
+export * as paymentsService from "./payments/paymentsService";
+export * as ratingsService from "./ratings/ratingsService";
+export * as recurringScheduleService from "./recurring/recurringScheduleService";
