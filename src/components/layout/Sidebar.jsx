@@ -1,7 +1,11 @@
 import { NavLink } from "react-router-dom";
 import { NAV_ITEMS } from "../../constants/navigation";
+import { useAuth } from "../../auth/useAuth";
 
 export function Sidebar() {
+  const { canAccess } = useAuth();
+  const navItems = NAV_ITEMS.filter((item) => canAccess(item.allowedRoles));
+
   return (
     <aside className="sidebar">
       <div className="sidebar-brand">
@@ -10,7 +14,7 @@ export function Sidebar() {
       </div>
 
       <nav className="sidebar-nav">
-        {NAV_ITEMS.map((item) => (
+        {navItems.map((item) => (
           <NavLink
             key={item.path}
             to={item.path}
@@ -24,4 +28,3 @@ export function Sidebar() {
     </aside>
   );
 }
-

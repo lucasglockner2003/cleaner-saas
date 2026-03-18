@@ -2,51 +2,41 @@
 
 ## Goal
 
-Deliver a practical operations platform MVP that helps a cleaning business run daily scheduling, track work completion, monitor basic finances, and keep house-level service history.
+Deliver a production-minded operational platform that now includes customer self-service foundations, while preserving maintainable architecture and clear module boundaries.
 
-## User roles (MVP)
+## In scope now
 
-- Owner/Manager: monitors performance, finance, and overall planning.
-- Operations Coordinator: manages schedule, clients, teams, and reminders.
-- Cleaner/Team Member: executes visits and logs service completion.
+1. Internal operations modules:
+   - clients, schedule, visits, teams, employees, finance, products, dashboard
+2. Communication workflows:
+   - reminders, completion communication, invoice communication, proof readiness
+3. Customer portal foundation:
+   - separate routing, layout, and login path
+   - customer-safe service history/upcoming/invoice/proof/account views
+4. Online booking foundation:
+   - booking request submission with realistic fields and estimates
+   - internal review/status workflow
+5. Recurring scheduling foundation:
+   - recurrence rule management (weekly/fortnightly/monthly/custom-ready)
+   - projection of upcoming recurring services
+   - materialization into scheduled visits
 
-## Implemented in MVP
+## Partial in current scope
 
-1. Client registration and management data model + UI list.
-2. Client details with profile, service notes, visit history, and photo placeholders.
-3. Monday-Friday schedule board with teams, ordered visits, and status display.
-4. Start/Finish visit execution flow with actual timing and variance.
-5. Suburb filtering/grouping support for operational planning.
-6. Teams and employee management visibility with baseline productivity metrics.
-7. Daily finance summary + monthly aggregate calculations.
-8. Product inventory tracking with stock status and low-stock indicators.
-9. Visit history page with proof/notes timeline foundation.
-10. Reminder architecture placeholders for email reminders.
-11. Dashboard with monthly and operational KPIs.
+- Email/storage providers use adapter boundaries; real provider plumbing is next.
+- Booking flow supports request/review lifecycle but not full availability/quote/payment automation.
+- Recurrence supports projection and manual materialization; full automation workers are pending.
 
-## Scaffolded now, not fully implemented
+## Out of scope for this phase
 
-- Reminder delivery providers (email transport integration)
-- invoice generation and dispatch engine
-- photo cloud upload/storage integration
-- route optimization engine contract
-- customer portal service boundary
-- payments/rating/review integration boundaries
-- recurring automation rules engine boundary
+- Full payment collection and subscription billing
+- Customer self-service reschedule/cancel orchestration with fees
+- Multi-tenant provisioning and tenant billing plans
+- AI optimization modules
 
-## Explicitly deferred
+## Architectural constraints (enforced)
 
-- Full customer portal
-- online booking
-- cancellation fees and rescheduling automation
-- payment collection
-- quality scoring and incentive logic
-- AI pricing and predictive profitability
-- multi-tenant authentication + organization provisioning flows
-
-## Out-of-scope guardrails
-
-- No hard dependency on external services for core local MVP run.
-- No heavy workflow automation before stable manual operations flow.
-- No “single giant page” architecture.
-
+- No page-level persistence logic
+- No direct transport/storage provider calls in UI
+- Customer and internal route surfaces remain separated
+- Shared domain consistency across portal and internal workflows

@@ -1,3 +1,4 @@
+import { useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { Card } from "../../components/ui/Card";
 import { Badge } from "../../components/ui/Badge";
@@ -6,19 +7,27 @@ import { StatCard } from "../../components/ui/StatCard";
 import { useAppData } from "../../hooks/useAppData";
 import { clientsService } from "../../services";
 import { formatDate, formatDateTime } from "../../utils/dateTime";
+import { ClientEditForm } from "./ClientEditForm";
+import { ClientNotesPanel } from "./ClientNotesPanel";
+import { ClientVisitHistoryPanel } from "./ClientVisitHistoryPanel";
 
 function statusTone(status) {
-  if (status === "completed") return "success";
-  if (status === "in_progress") return "warning";
-  if (status === "scheduled") return "neutral";
-  return "muted";
+  if (status === "active") return "success";
+  if (status === "inactive") return "muted";
+  return "neutral";
 }
 
 export function ClientDetailsPage() {
   const { clientId } = useParams();
   const { db, actions } = useAppData();
+  const [isEditing, setIsEditing] = useState(false);
 
   const snapshot = clientsService.getClientDetailSnapshot(db, clientId);
+
+  const activeNotes = useMemo(
+    () => snapshot?.notes.filter((note) => note.is_active) ?? [],
+    [snapshot?.notes]
+  );
 
   if (!snapshot) {
     return (
@@ -29,7 +38,26 @@ export function ClientDetailsPage() {
     );
   }
 
-  const { client, notes, visitHistory, metrics } = snapshot;
+  const { client, notes, visitHistory, metrics, instructionTokens, nextVisit, recurringServices } = snapshot;
+
+  function handleSaveClient(payload) {
+    const result = actions.updateClient(client.id, payload);
+    if (result.ok) {
+      setIsEditing(false);
+    }
+    return result;
+  }
+
+  function handleDelete() {
+    const confirmed = window.confirm(
+      "Delete/archive this client? Clients with visit history will be set inactive, not hard deleted."
+    );
+    if (!confirmed) {
+      return;
+    }
+
+    actions.deleteClient(client.id);
+  }
 
   return (
     <div className="page-grid">
@@ -37,23 +65,52 @@ export function ClientDetailsPage() {
         <div>
           <h2>{client.full_name}</h2>
           <p className="muted">{client.address}</p>
+          <p className="muted">
+            Last updated {formatDateTime(client.updated_at)} | Created {formatDate(client.created_at)}
+          </p>
         </div>
-        <Badge value={client.status} tone={client.status === "active" ? "success" : "muted"} />
+        <div className="inline-actions">
+          <Badge value={client.status} tone={statusTone(client.status)} />
+          <button type="button" className="btn btn-ghost" onClick={() => setIsEditing((value) => !value)}>
+            {isEditing ? "Close edit" : "Edit client"}
+          </button>
+          <button
+            type="button"
+            className="btn btn-ghost"
+            onClick={() => actions.setClientStatus(client.id, client.status === "active" ? "inactive" : "active")}
+          >
+            {client.status === "active" ? "Set inactive" : "Set active"}
+          </button>
+          <button type="button" className="btn btn-danger" onClick={handleDelete}>
+            Delete / Archive
+          </button>
+        </div>
       </div>
+
+      {isEditing ? (
+        <Card title="Edit client profile">
+          <ClientEditForm
+            client={client}
+            serviceTypes={db.serviceTypes}
+            onSave={handleSaveClient}
+            onCancel={() => setIsEditing(false)}
+          />
+        </Card>
+      ) : null}
 
       <section className="stat-grid">
         <StatCard label="Suburb" value={client.suburb} hint="Grouping region" />
         <StatCard label="Est. Duration" value={`${client.estimated_duration_min} min`} hint={client.cleaning_frequency} />
-        <StatCard label="Visits Logged" value={metrics.totalVisits} hint={`${metrics.completedVisits} completed`} />
+        <StatCard label="On-time Rate" value={`${Math.round(metrics.onTimeRate * 100)}%`} hint="Completed visits" />
         <StatCard
-          label="Avg Actual Duration"
-          value={metrics.averageActualDuration ? `${metrics.averageActualDuration} min` : "-"}
-          hint="From completed visits"
+          label="Proof Coverage"
+          value={`${Math.round(metrics.proofCoverageRate * 100)}%`}
+          hint={`${metrics.overrunVisits} overruns logged`}
         />
       </section>
 
       <section className="split-grid">
-        <Card title="Operational profile">
+        <Card title="Operations profile">
           <div className="detail-list">
             <p>
               <span>Phone</span>
@@ -61,7 +118,7 @@ export function ClientDetailsPage() {
             </p>
             <p>
               <span>Email</span>
-              <strong>{client.email}</strong>
+              <strong>{client.email || "-"}</strong>
             </p>
             <p>
               <span>Service Type</span>
@@ -77,93 +134,99 @@ export function ClientDetailsPage() {
             </p>
             <p>
               <span>Notes Summary</span>
-              <strong>{client.notes_summary}</strong>
+              <strong>{client.notes_summary || "-"}</strong>
+            </p>
+            <p>
+              <span>Average Actual Duration</span>
+              <strong>{metrics.averageActualDuration ? `${metrics.averageActualDuration} min` : "-"}</strong>
+            </p>
+            <p>
+              <span>Average Delta</span>
+              <strong>
+                {metrics.averageDeltaMin == null
+                  ? "-"
+                  : `${metrics.averageDeltaMin > 0 ? "+" : ""}${metrics.averageDeltaMin} min`}
+              </strong>
             </p>
           </div>
         </Card>
 
-        <Card title="Special instructions">
-          <p>{client.special_instructions}</p>
-          <hr className="divider" />
-          <h4>Service notes</h4>
-          {notes.length ? (
-            <ul className="simple-list">
-              {notes.map((note) => (
-                <li key={note.id}>
-                  <strong>{note.note_type}</strong>: {note.body}
-                </li>
+        <Card title="Special instructions and next visit">
+          {instructionTokens.length ? (
+            <div className="row-chip-list">
+              {instructionTokens.map((token) => (
+                <Badge key={token} value={token} tone="warning" />
               ))}
-            </ul>
+            </div>
           ) : (
-            <EmptyState title="No active notes" message="Add notes to support team execution consistency." />
+            <EmptyState title="No special instructions" message="Add key instructions to guide teams during dispatch." />
+          )}
+
+          <hr className="divider" />
+          <h4>Next scheduled visit</h4>
+          {nextVisit ? (
+            <div className="detail-list">
+              <p>
+                <span>Date</span>
+                <strong>{nextVisit.date}</strong>
+              </p>
+              <p>
+                <span>Window</span>
+                <strong>
+                  {nextVisit.estimated_start} - {nextVisit.estimated_end}
+                </strong>
+              </p>
+              <p>
+                <span>Assigned Team</span>
+                <strong>{nextVisit.team_name}</strong>
+              </p>
+              <p>
+                <span>Status</span>
+                <strong>{nextVisit.status}</strong>
+              </p>
+            </div>
+          ) : (
+            <p className="muted">No pending visit.</p>
+          )}
+
+          <hr className="divider" />
+          <h4>Recurring services</h4>
+          {recurringServices.length ? (
+            <div className="stack-list">
+              {recurringServices.map((item) => (
+                <article key={item.id} className="row-item">
+                  <div>
+                    <strong>{item.frequency}</strong>
+                    <p className="muted">
+                      {item.window_start} - {item.window_end}
+                    </p>
+                    <p className="muted">Next: {item.next_service_date || "-"}</p>
+                  </div>
+                  <Badge value={item.status || "active"} tone={(item.status || "active") === "active" ? "success" : "warning"} />
+                </article>
+              ))}
+            </div>
+          ) : (
+            <p className="muted">No recurring services configured.</p>
           )}
         </Card>
       </section>
 
-      <Card title="Visit history and proof timeline">
-        {visitHistory.length ? (
-          <div className="table-wrap">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Date</th>
-                  <th>Team</th>
-                  <th>Service</th>
-                  <th>Estimated</th>
-                  <th>Actual</th>
-                  <th>Delta</th>
-                  <th>Status</th>
-                  <th>Proof</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {visitHistory.map((visit) => (
-                  <tr key={visit.id}>
-                    <td>{visit.date}</td>
-                    <td>{visit.team_name}</td>
-                    <td>{visit.service_type_name}</td>
-                    <td>{visit.estimated_duration_min} min</td>
-                    <td>{visit.actual_duration_min ? `${visit.actual_duration_min} min` : "-"}</td>
-                    <td>{visit.delta_min == null ? "-" : `${visit.delta_min > 0 ? "+" : ""}${visit.delta_min} min`}</td>
-                    <td>
-                      <Badge value={visit.status} tone={statusTone(visit.status)} />
-                    </td>
-                    <td>{visit.photos.length} photos</td>
-                    <td>
-                      {visit.status === "scheduled" ? (
-                        <button className="btn" onClick={() => actions.startVisit(visit.id)}>
-                          Start house
-                        </button>
-                      ) : null}
-                      {visit.status === "in_progress" ? (
-                        <button className="btn" onClick={() => actions.finishVisit(visit.id, "Completed from client page")}>
-                          Finish house
-                        </button>
-                      ) : null}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <EmptyState title="No visit history" message="Scheduled and completed visits for this client will appear here." />
-        )}
+      <Card title={`Service notes timeline (${activeNotes.length} active)`}>
+        <ClientNotesPanel
+          notes={notes}
+          onAddNote={(payload) => actions.addClientNote(client.id, payload)}
+          onSetNoteActive={actions.setClientNoteActive}
+        />
       </Card>
 
-      <Card title="Latest service notes">
-        {visitHistory.slice(0, 3).map((visit) => (
-          <article key={visit.id} className="row-item">
-            <div>
-              <strong>{visit.date}</strong>
-              <p>{visit.notes || "No notes recorded."}</p>
-            </div>
-            <span className="muted">{formatDateTime(client.updated_at)}</span>
-          </article>
-        ))}
+      <Card title="Visit history control panel">
+        <ClientVisitHistoryPanel
+          visits={visitHistory}
+          onStart={(visitId) => actions.startVisit(visitId)}
+          onFinish={(visitId) => actions.finishVisit(visitId, "Completed from client control panel")}
+        />
       </Card>
     </div>
   );
 }
-

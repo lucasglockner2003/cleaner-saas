@@ -1,37 +1,54 @@
 # Implementation Status
 
-## Implemented now (working MVP foundation)
+## Implemented now (real behavior)
 
-- Client registration form and client management list
-- Client detail operations page with history, notes, and proof placeholders
-- Weekly Monday-Friday schedule board with team assignment and visit order
-- Start/finish visit execution with actual timing and status changes
-- Estimated vs actual duration delta tracking
-- Suburb filtering and grouping capability
-- Teams and employees operational visibility
-- Daily and monthly finance summaries with profit calculation
-- Product inventory and low-stock visibility
-- Visit history timeline with notes and photo metadata
-- Dashboard with operational KPIs
-- Reminder email architecture and sample payload generation
+### Internal operations
 
-## Scaffolded for later (interfaces/placeholders present)
+- Clients, schedule, visits, teams, employees, finance, products, dashboard.
+- Visit execution lifecycle with proof metadata and communication status linkage.
+- Reminder/invoice/completion communication pipelines with job tracking and retries.
 
-- Invoice drafting interface and module boundary
-- Photo storage upload adapter contract
-- Route optimization service contract
-- Recurring schedule automation contract
-- Customer portal service boundary
-- Payments adapter boundary (Stripe/PayPal)
-- Ratings/reviews service boundary
+### Customer-facing (Phase 5)
 
-## Intentionally deferred (not built in this MVP)
+- Dedicated customer portal route group and shell.
+- Customer login route and customer role/user-type access model.
+- Portal pages for:
+  - overview/upcoming services
+  - service history + proof references
+  - invoices
+  - booking requests
+  - recurring plan projections
+  - account details
+- Booking request domain:
+  - validation, estimation, submission, lifecycle status transitions
+  - internal booking review module
+- Recurring scheduling domain:
+  - configurable rules (weekly/fortnightly/monthly/custom-ready)
+  - future projection logic
+  - materialization of projected occurrences into scheduled visits
+  - internal recurring management module
 
-- Multi-tenant auth and organization provisioning
-- Online payments and full billing lifecycle
-- Client self-service portal
-- Automated route optimization engine
-- Advanced cancellation/rescheduling workflows
-- AI pricing/forecasting/efficiency engines
-- Marketing/CRM lifecycle modules
+### Persistence/auth evolution
 
+- Repository coverage expanded to bookings and recurring modules.
+- Data model expanded with `bookingRequests` and `portalAccounts`.
+- Route guards now enforce both roles and user types (`internal` vs `customer`).
+
+## Implemented with adapter boundaries
+
+- Email transport adapters: mock + webhook boundary
+- Photo storage adapters: placeholder + webhook boundary
+- Invoice export references (PDF generation still adapter-ready)
+
+## Partial / scaffolded
+
+- Real external provider integrations (email/storage/PDF workers)
+- Availability engine for booking confirmation
+- Automated recurring materialization worker
+- Portal-side payment and online settlement flows
+
+## Intentionally deferred
+
+- Full tenant provisioning and SaaS plan billing
+- Advanced customer self-service rescheduling/cancellation automation
+- AI routing/pricing/forecasting modules

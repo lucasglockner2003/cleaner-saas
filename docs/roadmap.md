@@ -1,44 +1,38 @@
 # Roadmap
 
-## Phase A (Current MVP foundation)
+## Phase A - Operations MVP foundation (completed)
 
-- Complete operations dashboard and essential modules.
-- Build replaceable service layer with mock repository.
-- Support visit execution, schedule visibility, and finance baseline.
-- Implement docs and clear boundaries for future systems.
+- Core dispatch, visit execution, finance, inventory, and client management.
+- Modular service layer and normalized data model.
 
-## Phase B (Operational hardening)
+## Phase B - Persistence and auth foundation (completed)
 
-- Persist data in Supabase (CRUD + relational joins).
-- Add auth with role-based permissions.
-- Add robust form validation and audit logs.
-- Implement reminder sending pipeline (email provider).
+- Local/Supabase-ready persistence gateway and repository mutation flow.
+- Auth/session and role-protected routes.
 
-## Phase C (Business automation)
+## Phase C - Communication and proof workflows (completed)
 
-- Recurring schedule automation with conflict detection.
-- Route planning/optimization.
-- Invoice generation and payment status tracking.
-- Delay alerts and low-stock alerts.
+- Reminder/invoice/completion pipelines with status/retry handling.
+- Proof metadata and readiness visibility.
 
-## Phase D (Customer-facing expansion)
+## Phase D - Customer self-service and recurrence (completed in current phase)
 
-- Customer portal with visit history and reschedule requests.
-- Photo sharing after service completion.
-- Service rating and review request workflows.
+- Customer portal route/app-shell separation.
+- Customer login and safe access boundary model.
+- Booking request lifecycle and internal review workflow.
+- Real recurring rule model, projections, and schedule materialization.
 
-## Phase E (SaaS scale)
+## Phase E - Provider and automation hardening (next)
 
-- Organization provisioning and multi-tenant isolation.
-- Region-aware operations and manager hierarchies.
-- Metrics warehouse and forecasting modules.
-- AI-assisted pricing, efficiency, and profitability insights.
+- Real email provider integration and event ingestion.
+- Real storage upload pipeline + signed proof delivery.
+- Invoice PDF generation worker and artifact storage.
+- Recurring and communication background job runners.
+- Availability engine to auto-assess booking requests.
 
-## Implementation priorities
+## Phase F - SaaS scale evolution (later)
 
-1. Data reliability and clear workflows
-2. Operational usability
-3. Replaceable architecture
-4. Automation incrementally, after workflow stability
-5. Multi-tenant controls after single-company maturity
-
+- Tenant/org provisioning and RLS policy hardening.
+- Customer payment integration and portal billing actions.
+- Multi-region dispatch optimization and deeper automation.
+- Predictive AI modules for capacity, delays, and profitability.

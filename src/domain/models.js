@@ -19,7 +19,9 @@ export const modelCatalog = {
   products: "Inventory records with stock thresholds.",
   productMovements: "Inventory movement ledger.",
   reminders: "Queued reminder communications.",
-  invoices: "Future billing placeholder model.",
-  ratings: "Future service quality feedback model."
+  invoices: "Billing lifecycle model with communication status.",
+  ratings: "Future service quality feedback model.",
+  communicationJobs: "Asynchronous communication workflow jobs with delivery lifecycle.",
+  bookingRequests: "Customer and lead booking requests pending internal review/approval.",
+  portalAccounts: "Customer portal account records linked to client profiles."
 };
-

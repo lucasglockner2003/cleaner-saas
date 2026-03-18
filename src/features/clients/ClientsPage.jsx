@@ -57,6 +57,25 @@ export function ClientsPage() {
         />
         <ClientsTable clients={filteredClients} />
       </Card>
+
+      <Card title="Suburb workload view">
+        <div className="suburb-grid">
+          {Object.entries(bySuburb).map(([suburb, clientsInSuburb]) => (
+            <article key={suburb} className="suburb-card">
+              <h4>{suburb}</h4>
+              <p>{clientsInSuburb.length} clients</p>
+              <p className="muted">
+                Avg estimate{" "}
+                {Math.round(
+                  clientsInSuburb.reduce((total, client) => total + client.estimated_duration_min, 0) /
+                    Math.max(1, clientsInSuburb.length)
+                )}{" "}
+                min
+              </p>
+            </article>
+          ))}
+        </div>
+      </Card>
     </div>
   );
 }

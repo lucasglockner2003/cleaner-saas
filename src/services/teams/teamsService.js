@@ -1,4 +1,4 @@
-import { findById } from "../helpers";
+import { cloneDatabase, findById } from "../helpers";
 import { buildDayEstimation } from "../../utils/scheduleEstimator";
 
 export function listTeamsWithWorkload(db) {
@@ -18,6 +18,12 @@ export function listTeamsWithWorkload(db) {
       0
     );
     const workloadHours = Number((totalEstimatedMin / 60).toFixed(1));
+    const completedVisitRecords = assignedVisits.filter((visit) => visit.status === "completed");
+    const totalRevenue = completedVisitRecords.reduce((total, visit) => total + (visit.price ?? 0), 0);
+    const overrunCount = completedVisitRecords.filter((visit) => {
+      const log = db.visitLogs.find((item) => item.scheduled_visit_id === visit.id);
+      return (log?.actual_duration_min ?? 0) > visit.estimated_duration_min;
+    }).length;
 
     return {
       ...team,
@@ -27,7 +33,11 @@ export function listTeamsWithWorkload(db) {
         completedVisits,
         inProgressVisits,
         scheduledVisits,
-        workloadHours
+        workloadHours,
+        totalRevenue,
+        overrunRate: completedVisitRecords.length
+          ? Number((overrunCount / completedVisitRecords.length).toFixed(2))
+          : 0
       },
       route_placeholder: "Route optimization module planned",
       performance_placeholder: "Advanced team efficiency scoring planned"
@@ -54,3 +64,38 @@ export function getTeamDayProjection(db, teamId, date) {
   });
 }
 
+export function reassignEmployeeTeam(db, employeeId, teamId) {
+  const mutable = cloneDatabase(db);
+  const employeeIndex = mutable.employees.findIndex((employee) => employee.id === employeeId);
+  if (employeeIndex < 0) {
+    return db;
+  }
+
+  mutable.employees[employeeIndex] = {
+    ...mutable.employees[employeeIndex],
+    team_id: teamId || null
+  };
+
+  const activeMembershipIndex = mutable.teamMembers.findIndex(
+    (member) => member.employee_id === employeeId && member.assigned_to == null
+  );
+
+  if (activeMembershipIndex >= 0) {
+    mutable.teamMembers[activeMembershipIndex] = {
+      ...mutable.teamMembers[activeMembershipIndex],
+      assigned_to: new Date().toISOString().slice(0, 10)
+    };
+  }
+
+  if (teamId) {
+    mutable.teamMembers.push({
+      id: `tm-${String(mutable.teamMembers.length + 1).padStart(3, "0")}`,
+      team_id: teamId,
+      employee_id: employeeId,
+      assigned_from: new Date().toISOString().slice(0, 10),
+      assigned_to: null
+    });
+  }
+
+  return mutable;
+}

@@ -34,6 +34,11 @@ export function ClientsTable({ clients }) {
       key: "last_cleaning_at",
       label: "Last Cleaning",
       render: (row) => formatDate(row.last_cleaning_at)
+    },
+    {
+      key: "instructions",
+      label: "Instructions",
+      render: (row) => (row.special_instructions ? "Yes" : "No")
     }
   ];
 
@@ -45,4 +50,3 @@ export function ClientsTable({ clients }) {
     />
   );
 }
-

@@ -1,9 +1,17 @@
 import { Card } from "../../components/ui/Card";
 import { StatCard } from "../../components/ui/StatCard";
 import { Badge } from "../../components/ui/Badge";
+import { DataTable } from "../../components/ui/DataTable";
+import { EmptyState } from "../../components/ui/EmptyState";
 import { useAppData } from "../../hooks/useAppData";
 import { teamsService } from "../../services";
 import { resolveOperationalDate } from "../../utils/operationsDate";
+
+function overrunTone(rate) {
+  if (rate <= 0.2) return "success";
+  if (rate <= 0.4) return "warning";
+  return "danger";
+}
 
 export function TeamsPage() {
   const { db } = useAppData();
@@ -13,6 +21,40 @@ export function TeamsPage() {
   const totalMembers = teams.reduce((total, team) => total + team.members.length, 0);
   const totalAssignedVisits = teams.reduce((total, team) => total + team.stats.assignedVisits, 0);
   const totalWorkloadHours = teams.reduce((total, team) => total + team.stats.workloadHours, 0);
+  const totalRevenue = teams.reduce((total, team) => total + team.stats.totalRevenue, 0);
+
+  const performanceRows = teams.map((team) => ({
+    id: team.id,
+    name: team.name,
+    region: team.region,
+    members: team.members.length,
+    assigned: team.stats.assignedVisits,
+    completed: team.stats.completedVisits,
+    in_progress: team.stats.inProgressVisits,
+    workload: team.stats.workloadHours,
+    revenue: team.stats.totalRevenue,
+    overrun_rate: team.stats.overrunRate
+  }));
+
+  const columns = [
+    { key: "name", label: "Team" },
+    { key: "region", label: "Region" },
+    { key: "members", label: "Members" },
+    { key: "assigned", label: "Assigned Visits" },
+    { key: "completed", label: "Completed" },
+    { key: "in_progress", label: "In Progress" },
+    { key: "workload", label: "Workload (hrs)" },
+    {
+      key: "revenue",
+      label: "Revenue",
+      render: (row) => `$${row.revenue.toFixed(2)}`
+    },
+    {
+      key: "overrun_rate",
+      label: "Overrun Rate",
+      render: (row) => <Badge value={`${Math.round(row.overrun_rate * 100)}%`} tone={overrunTone(row.overrun_rate)} />
+    }
+  ];
 
   return (
     <div className="page-grid">
@@ -20,8 +62,20 @@ export function TeamsPage() {
         <StatCard label="Teams" value={teams.length} hint="Active delivery teams" />
         <StatCard label="Team Members" value={totalMembers} hint="Across all teams" />
         <StatCard label="Assigned Visits" value={totalAssignedVisits} hint="Current schedule set" />
-        <StatCard label="Workload" value={`${totalWorkloadHours.toFixed(1)} hrs`} hint="Estimated visit hours" />
+        <StatCard
+          label="Workload"
+          value={`${totalWorkloadHours.toFixed(1)} hrs`}
+          hint={`Completed revenue $${totalRevenue.toFixed(2)}`}
+        />
       </section>
+
+      <Card title="Team management overview">
+        <DataTable
+          columns={columns}
+          rows={performanceRows}
+          empty={<EmptyState title="No teams found" message="Team records will appear here." />}
+        />
+      </Card>
 
       <section className="cards-grid">
         {teams.map((team) => {
@@ -42,8 +96,8 @@ export function TeamsPage() {
                   <span>In progress</span>
                 </div>
                 <div>
-                  <strong>{team.stats.workloadHours}</strong>
-                  <span>Workload hrs</span>
+                  <strong>${team.stats.totalRevenue.toFixed(0)}</strong>
+                  <span>Revenue</span>
                 </div>
               </div>
 
@@ -66,12 +120,12 @@ export function TeamsPage() {
                   <strong>{projection ? `${Math.round(projection.utilizationRate * 100)}%` : "-"}</strong>
                 </p>
                 <p>
-                  <span>Route module</span>
-                  <strong>{team.route_placeholder}</strong>
+                  <span>Overrun rate</span>
+                  <strong>{Math.round(team.stats.overrunRate * 100)}%</strong>
                 </p>
                 <p>
-                  <span>Performance module</span>
-                  <strong>{team.performance_placeholder}</strong>
+                  <span>Route module</span>
+                  <strong>{team.route_placeholder}</strong>
                 </p>
               </div>
             </Card>

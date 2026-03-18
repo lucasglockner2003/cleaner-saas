@@ -15,6 +15,9 @@ import { productMovements } from "./entities/productMovements";
 import { reminders } from "./entities/reminders";
 import { invoices } from "./entities/invoices";
 import { ratings } from "./entities/ratings";
+import { communicationJobs } from "./entities/communicationJobs";
+import { bookingRequests } from "./entities/bookingRequests";
+import { portalAccounts } from "./entities/portalAccounts";
 
 const seedDatabase = {
   clients,
@@ -33,10 +36,12 @@ const seedDatabase = {
   productMovements,
   reminders,
   invoices,
-  ratings
+  ratings,
+  communicationJobs,
+  bookingRequests,
+  portalAccounts
 };
 
 export function createSeedDatabase() {
   return JSON.parse(JSON.stringify(seedDatabase));
 }
-

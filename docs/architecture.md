@@ -2,92 +2,115 @@
 
 ## Product direction
 
-This project is the foundation of an internal operations platform for cleaning companies, designed to evolve into a multi-tenant SaaS product. The MVP prioritizes daily execution visibility over advanced automation.
+The platform now supports both:
 
-## Architectural principles
+- internal operations workflows (dispatch, visits, finance, inventory, communications)
+- customer-facing workflows (portal, booking requests, recurring service visibility)
 
-- Keep domain logic separate from rendering/UI.
-- Keep modules replaceable so mock data can be swapped for Supabase adapters.
-- Optimize for operations readability first (desktop-first with responsive support).
-- Normalize core entities and derive page-friendly summaries in services.
-- Scaffold advanced capabilities with interfaces, not heavy integrations.
+The architecture keeps these experiences separated while sharing one normalized domain model and persistence stack.
 
-## Frontend architecture
+## Core principles
 
-### App layers
+- Keep UI concerns separate from business/workflow logic.
+- Keep provider integrations behind adapters and pipelines.
+- Keep persistence behind repositories and persist plans.
+- Keep customer and internal route boundaries explicit.
+- Build realistic workflows now, preserve extensibility for SaaS scale later.
+
+## Application layers
 
 1. `app/`
-   - routing, app shell, global providers
-2. `features/`
-   - page-level containers and domain-specific presentation components
-3. `components/`
-   - reusable layout and UI primitives
+   - router, providers, auth guards, shell selection
+2. `components/`
+   - reusable UI primitives and shell components
+3. `features/`
+   - page modules:
+     - internal: dashboard, clients, schedule, teams, employees, finance, products, visits, bookings, recurring, communications, settings
+     - customer: portal overview, history, invoices, booking, recurring, account
 4. `services/`
-   - domain access APIs and orchestration logic (mock-backed now)
-5. `mocks/`
-   - normalized seed data and derived view seeds
-6. `utils/`
-   - pure scheduling and finance calculations
+   - domain logic, communication pipelines, booking/recurrence logic, portal-safe read models
+5. `persistence/`
+   - datasource gateway + repositories
+6. `mocks/`
+   - normalized seed entities
 7. `docs/`
-   - architecture, scope, workflows, roadmap
+   - scope, model, workflows, auth, persistence, roadmap
 
-### State approach
+## Experience separation
 
-- A central `AppDataProvider` holds current in-memory operational state.
-- Feature pages read state via a custom hook and call domain actions.
-- Domain services provide query and mutation functions to avoid page logic bloat.
-- All mutations happen through service/action methods to keep future persistence migration straightforward.
+### Internal app
 
-## Service architecture
+- routes under `/`
+- `AppShell` with sidebar, operational feedback banners, sync status
+- role-scoped internal modules
 
-### Implemented now
+### Customer portal
 
-- `clientsService`: client retrieval, suburb grouping/filtering, per-client timeline data.
-- `scheduleService`: weekly schedule map, team/day loading, projected workload helpers.
-- `visitsService`: start/finish actions, duration deltas, visit history and status summaries.
-- `employeesService`: employee utilization basics and team assignment snapshots.
-- `financeService`: daily/monthly totals, profit calculations, cost composition.
-- `productsService`: stock status, low-stock detection, movement timeline placeholders.
-- `remindersService`: reminder payload construction and provider interface placeholders.
+- routes under `/portal/*`
+- dedicated `PortalShell` with portal navigation
+- customer-only data view models from `customerPortalService`
+- no direct reuse of internal operations layout/navigation
 
-### Scaffolded for later
+## Access model architecture
 
-- `invoicesService`: invoice generation contract (not full billing integration).
-- `photoStorageService`: photo metadata + storage provider contract.
-- route optimization provider interface
-- customer portal API gateway interface
-- payments adapter contract (Stripe/PayPal)
-- ratings/reviews service contract
+- `ProtectedRoute` now checks:
+  - authentication state
+  - allowed role(s)
+  - allowed user type(s): `internal` vs `customer`
+- login routes are separated:
+  - `/login` for internal users
+  - `/portal/login` for customer users
 
-## Data architecture and Supabase evolution strategy
+## Domain/service architecture
 
-- Entity IDs are explicit and stable.
-- Table-like seeds map directly to relational schema design.
-- Join entities (`team_members`, `recurring_services`) are modeled separately.
-- Business calculations are derived from entities instead of denormalized source-of-truth tables.
+### Internal operations
 
-### Supabase migration path
+- `clientsService`, `scheduleService`, `visitsService`, `teamsService`, `employeesService`, `financeService`, `productsService`
 
-1. Replace mock repository reads with Supabase queries in service layer.
-2. Replace mutation actions with Supabase `insert/update` flows.
-3. Introduce auth + row-level policies (manager/dispatcher/cleaner scopes).
-4. Move file metadata to `visit_photos`; back photo files with Supabase storage buckets.
-5. Add background jobs for reminders, invoice dispatch, and future automation rules.
+### Communication workflows
 
-## SaaS readiness decisions
+- `remindersService` + reminder pipeline
+- `invoicesService` + invoice pipeline
+- `completionService` + completion pipeline
+- `communicationJobsService`
+- `photoStorageService`
 
-### Implemented decisions
+### Customer-facing workflows (Phase 5)
 
-- Data model includes `organization_id` placeholders in docs and service contracts.
-- Regional scaling considered via `suburb`, `region`, and `schedule_day` segmentation.
-- Role-aware workflows documented for owner/operations/cleaners.
-- Domain boundaries align with eventual microservice decomposition if needed.
+- `bookingsService`
+  - booking request validation, estimation, lifecycle transitions
+- `recurringScheduleService`
+  - recurrence rule validation, projection, status control, materialization into scheduled visits
+- `customerPortalService`
+  - customer-safe snapshot (upcoming/past visits, invoices, proof references, recurring projection, booking requests)
 
-### Deferred intentionally
+## Repository and persistence architecture
 
-- Full multi-tenant auth and org isolation
-- billing/payments
-- route engine
-- client self-service portal
-- AI-assisted pricing/forecasting
+- `createRepositoryBundle` now includes:
+  - bookings repository
+  - recurring repository
+  - previous operational and communication repositories
+- App actions execute repository mutations only (no page-level persistence logic)
+- persist plans isolate writes by collection for Supabase-ready module migration
 
+## Provider boundaries
+
+- Email transport adapters: mock + webhook
+- Photo storage adapters: placeholder + webhook
+- Future: real provider implementations can replace adapters without UI refactors
+
+## SaaS evolution readiness
+
+### Real now
+
+- split internal vs customer route surfaces
+- customer-safe data shaping
+- booking and recurring domain models linked to schedule/visit/invoice/proof
+- repository-backed mutation flows for new customer-facing modules
+
+### Prepared next
+
+- provider-backed customer notifications
+- availability and pricing engines for booking flow
+- workerized recurring/materialization automation
+- tenant-scoped auth/data policies for multi-company mode
