@@ -22,6 +22,7 @@ const SettingsPage = lazy(() => import("../features/settings/SettingsPage").then
 const CommunicationsPage = lazy(() =>
   import("../features/communications/CommunicationsPage").then((m) => ({ default: m.CommunicationsPage }))
 );
+const PilotToolsPage = lazy(() => import("../features/pilot/PilotToolsPage").then((m) => ({ default: m.PilotToolsPage })));
 const BookingsPage = lazy(() => import("../features/bookings/BookingsPage").then((m) => ({ default: m.BookingsPage })));
 const RecurringPage = lazy(() => import("../features/recurring/RecurringPage").then((m) => ({ default: m.RecurringPage })));
 const LoginPage = lazy(() => import("../features/auth/LoginPage").then((m) => ({ default: m.LoginPage })));
@@ -153,6 +154,14 @@ export function AppRouter() {
         element={
           <ProtectedRoute allowedRoles={[ROLES.OWNER, ROLES.OPS]} allowedUserTypes={["internal"]}>
             {withLazyBoundary(<CommunicationsPage />)}
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/pilot-tools"
+        element={
+          <ProtectedRoute allowedRoles={[ROLES.OWNER, ROLES.OPS]} allowedUserTypes={["internal"]}>
+            {withLazyBoundary(<PilotToolsPage />)}
           </ProtectedRoute>
         }
       />

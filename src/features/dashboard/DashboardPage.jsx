@@ -2,6 +2,7 @@ import { Card } from "../../components/ui/Card";
 import { StatCard } from "../../components/ui/StatCard";
 import { Badge } from "../../components/ui/Badge";
 import { EmptyState } from "../../components/ui/EmptyState";
+import { getRuntimeConfigReport } from "../../config/env";
 import { useAppData } from "../../hooks/useAppData";
 import {
   bookingsService,
@@ -18,10 +19,12 @@ import {
   recurringScheduleService,
   remindersService,
   scheduleService,
+  operationsJobService,
   subscriptionsService,
   visitsService
 } from "../../services";
 import { resolveOperationalDate, resolveOperationalMonth } from "../../utils/operationsDate";
+import { PilotOnboardingCard } from "./PilotOnboardingCard";
 
 function trendTone(value) {
   if (value > 0) return "success";
@@ -52,6 +55,7 @@ export function DashboardPage() {
   const invoiceStats = invoicesService.getInvoiceStats(db);
   const completionStats = completionService.getCompletionCommunicationStats(db);
   const jobStats = communicationJobsService.getCommunicationJobStatsByType(db);
+  const operationStats = operationsJobService.getOperationJobStats(db);
   const proofStats = photoStorageService.getProofCompletenessStats(db);
   const bookingSummary = bookingsService.getBookingPipelineSummary(db);
   const recurringOverview = recurringScheduleService.getRecurringOperationalOverview(db, {
@@ -60,6 +64,83 @@ export function DashboardPage() {
   });
   const visitSummary = visitsService.getVisitPerformanceSummary(db);
   const week = scheduleService.getWeeklySchedule(db);
+  const configReport = getRuntimeConfigReport();
+
+  const activeTeamCount = db.teams.filter((team) => team.is_active).length;
+  const activeCleanerCount = db.employees.filter((employee) => employee.status === "active" && employee.team_id).length;
+  const activeClientCount = db.clients.filter((client) => client.status === "active").length;
+  const scheduledVisitCount = db.scheduledVisits.filter((visit) => ["scheduled", "in_progress"].includes(visit.status)).length;
+
+  const onboardingSteps = [
+    {
+      key: "config",
+      title: "Runtime config validated",
+      description: configReport.isLaunchReady
+        ? "Environment checks are green for current runtime mode."
+        : `${configReport.criticalIssues.length} blocking issue(s) still need resolution.`,
+      completed: configReport.isLaunchReady,
+      blocking: true,
+      ctaPath: "/settings",
+      ctaLabel: "Open settings"
+    },
+    {
+      key: "workforce",
+      title: "Teams and cleaners assigned",
+      description: `${activeTeamCount} active team(s), ${activeCleanerCount} assigned cleaner(s).`,
+      completed: activeTeamCount > 0 && activeCleanerCount > 0,
+      blocking: activeTeamCount === 0 || activeCleanerCount === 0,
+      ctaPath: "/teams",
+      ctaLabel: "Manage teams"
+    },
+    {
+      key: "clients",
+      title: "Client base loaded",
+      description: `${activeClientCount} active client(s) available for dispatch.`,
+      completed: activeClientCount >= 3,
+      blocking: activeClientCount === 0,
+      ctaPath: "/clients",
+      ctaLabel: "Open clients"
+    },
+    {
+      key: "pilot-tools",
+      title: "Pilot data tooling run",
+      description:
+        activeClientCount > 0 || scheduledVisitCount > 0
+          ? "Pilot dataset exists. Use tools again for quick refresh/reset cycles."
+          : "No pilot dataset detected yet. Run CSV import + schedule generation to bootstrap fast.",
+      completed: activeClientCount > 0 && scheduledVisitCount > 0,
+      blocking: false,
+      ctaPath: "/pilot-tools",
+      ctaLabel: "Open pilot tools"
+    },
+    {
+      key: "schedule",
+      title: "Upcoming schedule ready",
+      description: `${scheduledVisitCount} scheduled/in-progress visit(s) ready for operations.`,
+      completed: scheduledVisitCount > 0,
+      blocking: scheduledVisitCount === 0,
+      ctaPath: "/schedule",
+      ctaLabel: "Open schedule"
+    },
+    {
+      key: "billing",
+      title: "Invoice and payment visibility",
+      description: `${invoiceStats.total} invoice(s), ${paymentsSummary.totalTransactions} payment record(s).`,
+      completed: invoiceStats.total > 0 && paymentsSummary.totalTransactions > 0,
+      blocking: false,
+      ctaPath: "/monetization",
+      ctaLabel: "Open monetization"
+    },
+    {
+      key: "jobs",
+      title: "Job execution observed",
+      description: `${operationStats.total} operation job(s), ${jobStats.overall.total} communication job(s).`,
+      completed: operationStats.total > 0 || jobStats.overall.total > 0,
+      blocking: false,
+      ctaPath: "/settings",
+      ctaLabel: "Open job controls"
+    }
+  ];
 
   const averageTimePerHouse = db.visitLogs.filter((log) => log.status === "completed").length
     ? Math.round(
@@ -87,6 +168,8 @@ export function DashboardPage() {
         <StatCard label="At-Risk Clients" value={lifecycleSummary.atRiskClients} hint="CRM retention signal" />
         <StatCard label="Referral Conversions" value={growthSummary.referrals.converted} hint="Growth pipeline performance" />
       </section>
+
+      <PilotOnboardingCard steps={onboardingSteps} />
 
       <section className="split-grid">
         <Card title="Operational health" subtitle={`Operating date: ${operatingDate}`}>

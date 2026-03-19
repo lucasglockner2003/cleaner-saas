@@ -5,13 +5,13 @@ export function SyncStatusBanner({ persistence, onRetry }) {
 
   return (
     <div className="sync-banner">
-      <p>
-        Persistence mode: {persistence.mode}. Sync issue: {persistence.syncState.error}
-      </p>
+      <div>
+        <p>Data sync needs attention ({persistence.mode} mode).</p>
+        <p className="muted">{persistence.syncState.error || "Last sync attempt failed."}</p>
+      </div>
       <button type="button" className="btn btn-ghost" onClick={onRetry}>
         Retry sync
       </button>
     </div>
   );
 }
-

@@ -1,24 +1,27 @@
 import { useEffect, useMemo, useState } from "react";
 
 export function DataTable({ columns, rows, empty, windowSize = null }) {
-  if (!rows.length) {
-    return empty;
-  }
+  const normalizedRows = Array.isArray(rows) ? rows : [];
+  const rowCount = normalizedRows.length;
 
   const normalizedWindowSize = Number(windowSize ?? 0);
-  const shouldWindow = normalizedWindowSize > 0 && rows.length > normalizedWindowSize;
-  const [visibleCount, setVisibleCount] = useState(shouldWindow ? normalizedWindowSize : rows.length);
+  const shouldWindow = normalizedWindowSize > 0 && rowCount > normalizedWindowSize;
+  const [visibleCount, setVisibleCount] = useState(shouldWindow ? normalizedWindowSize : rowCount);
 
   useEffect(() => {
-    setVisibleCount(shouldWindow ? normalizedWindowSize : rows.length);
-  }, [rows.length, normalizedWindowSize, shouldWindow]);
+    setVisibleCount(shouldWindow ? normalizedWindowSize : rowCount);
+  }, [rowCount, normalizedWindowSize, shouldWindow]);
 
   const visibleRows = useMemo(() => {
     if (!shouldWindow) {
-      return rows;
+      return normalizedRows;
     }
-    return rows.slice(0, visibleCount);
-  }, [rows, shouldWindow, visibleCount]);
+    return normalizedRows.slice(0, visibleCount);
+  }, [normalizedRows, shouldWindow, visibleCount]);
+
+  if (!rowCount) {
+    return empty;
+  }
 
   return (
     <div className="table-wrap">
@@ -42,14 +45,14 @@ export function DataTable({ columns, rows, empty, windowSize = null }) {
           ))}
         </tbody>
       </table>
-      {shouldWindow && visibleCount < rows.length ? (
+      {shouldWindow && visibleCount < rowCount ? (
         <div className="table-foot-actions">
           <button
             type="button"
             className="btn btn-ghost"
-            onClick={() => setVisibleCount((current) => Math.min(rows.length, current + normalizedWindowSize))}
+            onClick={() => setVisibleCount((current) => Math.min(rowCount, current + normalizedWindowSize))}
           >
-            Load more rows ({rows.length - visibleCount} remaining)
+            Load more rows ({rowCount - visibleCount} remaining)
           </button>
         </div>
       ) : null}

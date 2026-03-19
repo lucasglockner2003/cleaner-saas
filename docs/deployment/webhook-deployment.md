@@ -16,6 +16,13 @@ Current launch path focuses on Stripe payment webhooks.
 - `infra/webhooks/stripe/verifyStripeSignature.mjs`
 - `infra/webhooks/stripe/mapStripeEventToPaymentEvent.mjs`
 - `infra/webhooks/stripe/handlerExample.mjs`
+- `infra/webhooks/stripe/serverExample.mjs` (HTTP wiring template)
+
+Run local webhook runtime:
+
+```bash
+npm run webhook:stripe:example
+```
 
 ## Security controls
 

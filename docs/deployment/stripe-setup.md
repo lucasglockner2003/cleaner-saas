@@ -18,7 +18,9 @@ Frontend:
 Webhook runtime:
 
 - `STRIPE_WEBHOOK_SECRET=<whsec_...>`
+- `STRIPE_SECRET_KEY=<sk_live_...>`
 - `PAYMENT_GATEWAY_AUTH_TOKEN`
+- `APP_PAYMENT_WEBHOOK_URL=<app-ingest-endpoint>`
 
 ## Signature verification path
 
@@ -27,6 +29,7 @@ Reference implementation:
 - `infra/webhooks/stripe/verifyStripeSignature.mjs`
 - `infra/webhooks/stripe/mapStripeEventToPaymentEvent.mjs`
 - `infra/webhooks/stripe/handlerExample.mjs`
+- `infra/webhooks/stripe/serverExample.mjs`
 
 ## Reconciliation flow
 

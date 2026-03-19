@@ -1,0 +1,6 @@
+{
+  "name": "pilot-launch",
+  "migrations": [
+    "supabase/migrations/20260320_launch_readiness.sql"
+  ]
+}

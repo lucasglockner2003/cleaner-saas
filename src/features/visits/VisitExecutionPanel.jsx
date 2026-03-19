@@ -29,16 +29,21 @@ export function VisitExecutionPanel({
   onAddPhoto,
   canManageLifecycle,
   onQueueCompletionEmail,
-  onRetryCompletionJob
+  onRetryCompletionJob,
+  mutationState
 }) {
   const [notes, setNotes] = useState(snapshot?.visit.visit_notes ?? "");
   const [beforeFileName, setBeforeFileName] = useState("");
   const [afterFileName, setAfterFileName] = useState("");
+  const [inlineError, setInlineError] = useState("");
+  const [inlineMessage, setInlineMessage] = useState("");
 
   useEffect(() => {
     setNotes(snapshot?.visit.visit_notes ?? "");
     setBeforeFileName("");
     setAfterFileName("");
+    setInlineError("");
+    setInlineMessage("");
   }, [snapshot?.visit.id, snapshot?.visit.visit_notes]);
 
   if (!snapshot) {
@@ -46,6 +51,80 @@ export function VisitExecutionPanel({
   }
 
   const { visit, beforePhotos, afterPhotos, metrics, proofTimeline } = snapshot;
+  const baseNotes = snapshot?.visit.visit_notes ?? "";
+  const notesChanged = notes.trim() !== baseNotes.trim();
+  const startPending = Boolean(mutationState?.startVisit);
+  const finishPending = Boolean(mutationState?.finishVisit);
+  const cancelPending = Boolean(mutationState?.cancelVisit);
+  const reopenPending = Boolean(mutationState?.reopenVisit);
+  const saveNotesPending = Boolean(mutationState?.updateVisitNotes);
+  const addPhotoPending = Boolean(mutationState?.addVisitPhoto);
+  const queueCompletionPending = Boolean(mutationState?.queueCompletionEmail);
+  const retryCompletionPending = Boolean(mutationState?.retryCompletionJob);
+
+  function setResultFeedback(result, successMessage) {
+    if (result?.ok === false) {
+      setInlineError(result.message || "Action failed.");
+      setInlineMessage("");
+      return false;
+    }
+    setInlineError("");
+    setInlineMessage(successMessage);
+    return true;
+  }
+
+  function handleSaveNotes() {
+    const result = onSaveNotes(visit.id, notes);
+    setResultFeedback(result, "Visit notes saved.");
+  }
+
+  function handleAddPhoto(phase, fileName) {
+    const normalized = String(fileName || "").trim();
+    if (!normalized) {
+      setInlineError("Enter a file name before adding proof metadata.");
+      setInlineMessage("");
+      return;
+    }
+
+    const result = onAddPhoto(visit.id, phase, normalized);
+    const ok = setResultFeedback(result, `${phase === "before" ? "Before" : "After"} proof metadata added.`);
+    if (ok) {
+      if (phase === "before") {
+        setBeforeFileName("");
+      } else {
+        setAfterFileName("");
+      }
+    }
+  }
+
+  function handleQueueCompletion() {
+    const result = onQueueCompletionEmail(visit.id);
+    setResultFeedback(result, "Completion email queued.");
+  }
+
+  function handleRetryCompletion() {
+    const result = onRetryCompletionJob(visit.completion_job_id);
+    setResultFeedback(result, "Completion email retry scheduled.");
+  }
+
+  function getNextStepMessage() {
+    if (visit.status === "scheduled") {
+      return "Next step: start house when cleaner arrives.";
+    }
+    if (visit.status === "in_progress") {
+      return "Next step: finish house, save final notes, and check proof readiness.";
+    }
+    if (visit.status === "completed" && visit.completion_communication_status === "not_queued") {
+      return "Next step: queue completion email and verify proof/invoice linkage.";
+    }
+    if (visit.status === "completed") {
+      return "Completed flow: verify communication status and close remaining proof gaps.";
+    }
+    if (visit.status === "cancelled") {
+      return canManageLifecycle ? "Visit cancelled. Reopen only if customer confirms reinstatement." : "Visit cancelled by operations.";
+    }
+    return "Review visit details and continue workflow.";
+  }
 
   return (
     <div className="page-grid compact-grid">
@@ -58,6 +137,8 @@ export function VisitExecutionPanel({
         </div>
         <Badge value={visit.status} tone={tone(visit.status)} />
       </div>
+
+      <div className="visit-next-step">{getNextStepMessage()}</div>
 
       <div className="detail-list">
         <p>
@@ -100,37 +181,40 @@ export function VisitExecutionPanel({
         </p>
       </div>
 
+      {inlineError ? <p className="field-error">{inlineError}</p> : null}
+      {inlineMessage ? <p className="success-inline">{inlineMessage}</p> : null}
+
       <div className="inline-actions">
         {visit.status === "scheduled" ? (
-          <button className="btn" onClick={() => onStart(visit.id)}>
-            Start house
+          <button className="btn" onClick={() => onStart(visit.id)} disabled={startPending || cancelPending}>
+            {startPending ? "Starting..." : "Start house"}
           </button>
         ) : null}
         {visit.status === "in_progress" ? (
-          <button className="btn" onClick={() => onFinish(visit.id)}>
-            Finish house
+          <button className="btn" onClick={() => onFinish(visit.id)} disabled={finishPending || cancelPending}>
+            {finishPending ? "Finishing..." : "Finish house"}
           </button>
         ) : null}
         {canManageLifecycle && (visit.status === "scheduled" || visit.status === "in_progress") ? (
-          <button className="btn btn-ghost" onClick={() => onCancel(visit.id)}>
-            Cancel
+          <button className="btn btn-ghost" onClick={() => onCancel(visit.id)} disabled={cancelPending || startPending || finishPending}>
+            {cancelPending ? "Cancelling..." : "Cancel"}
           </button>
         ) : null}
         {canManageLifecycle && visit.status === "cancelled" ? (
-          <button className="btn btn-ghost" onClick={() => onReopen(visit.id)}>
-            Reopen
+          <button className="btn btn-ghost" onClick={() => onReopen(visit.id)} disabled={reopenPending}>
+            {reopenPending ? "Reopening..." : "Reopen"}
           </button>
         ) : null}
         {visit.status === "completed" && visit.completion_communication_status === "not_queued" ? (
-          <button className="btn btn-ghost" onClick={() => onQueueCompletionEmail(visit.id)}>
-            Queue completion email
+          <button className="btn btn-ghost" onClick={handleQueueCompletion} disabled={queueCompletionPending}>
+            {queueCompletionPending ? "Queueing..." : "Queue completion email"}
           </button>
         ) : null}
         {visit.status === "completed" &&
         (visit.completion_communication_status === "failed" || visit.completion_communication_status === "retry_scheduled") &&
         visit.completion_job_id ? (
-          <button className="btn btn-ghost" onClick={() => onRetryCompletionJob(visit.completion_job_id)}>
-            Retry completion email
+          <button className="btn btn-ghost" onClick={handleRetryCompletion} disabled={retryCompletionPending}>
+            {retryCompletionPending ? "Scheduling retry..." : "Retry completion email"}
           </button>
         ) : null}
       </div>
@@ -145,8 +229,8 @@ export function VisitExecutionPanel({
         />
       </label>
       <div className="form-actions">
-        <button className="btn btn-ghost" onClick={() => onSaveNotes(visit.id, notes)}>
-          Save notes
+        <button className="btn btn-ghost" onClick={handleSaveNotes} disabled={!notesChanged || saveNotesPending}>
+          {saveNotesPending ? "Saving notes..." : "Save notes"}
         </button>
       </div>
 
@@ -159,17 +243,21 @@ export function VisitExecutionPanel({
               onChange={(event) => setBeforeFileName(event.target.value)}
               placeholder="before-kitchen.jpg"
             />
-            <button className="btn" onClick={() => onAddPhoto(visit.id, "before", beforeFileName)}>
-              Add
+            <button className="btn" onClick={() => handleAddPhoto("before", beforeFileName)} disabled={addPhotoPending}>
+              {addPhotoPending ? "Adding..." : "Add"}
             </button>
           </div>
-          <ul className="simple-list">
-            {beforePhotos.map((photo) => (
-              <li key={photo.id}>
-                {photo.file_name} ({photo.upload_status})
-              </li>
-            ))}
-          </ul>
+          {beforePhotos.length ? (
+            <ul className="simple-list">
+              {beforePhotos.map((photo) => (
+                <li key={photo.id}>
+                  {photo.file_name} ({photo.upload_status})
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="muted">No before proof yet.</p>
+          )}
         </div>
 
         <div className="proof-column">
@@ -180,17 +268,21 @@ export function VisitExecutionPanel({
               onChange={(event) => setAfterFileName(event.target.value)}
               placeholder="after-kitchen.jpg"
             />
-            <button className="btn" onClick={() => onAddPhoto(visit.id, "after", afterFileName)}>
-              Add
+            <button className="btn" onClick={() => handleAddPhoto("after", afterFileName)} disabled={addPhotoPending}>
+              {addPhotoPending ? "Adding..." : "Add"}
             </button>
           </div>
-          <ul className="simple-list">
-            {afterPhotos.map((photo) => (
-              <li key={photo.id}>
-                {photo.file_name} ({photo.upload_status})
-              </li>
-            ))}
-          </ul>
+          {afterPhotos.length ? (
+            <ul className="simple-list">
+              {afterPhotos.map((photo) => (
+                <li key={photo.id}>
+                  {photo.file_name} ({photo.upload_status})
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="muted">No after proof yet.</p>
+          )}
         </div>
       </div>
 

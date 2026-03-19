@@ -28,7 +28,7 @@ function communicationTone(status) {
 }
 
 export function VisitsPage() {
-  const { db, actions } = useAppData();
+  const { db, actions, mutationState } = useAppData();
   const { canAccess } = useAuth();
   const [statusFilter, setStatusFilter] = useState("all");
   const [dayFilter, setDayFilter] = useState("all");
@@ -50,6 +50,7 @@ export function VisitsPage() {
   const completionFailedCount = visits.filter((visit) => visit.completion_communication_status === "failed").length;
   const proofMissingCount = visits.filter((visit) => visit.needs_proof && !visit.proof_ready).length;
   const canManageLifecycle = canAccess([ROLES.OWNER, ROLES.OPS]);
+  const hasActiveFilters = statusFilter !== "all" || dayFilter !== "all" || teamFilter !== "all" || suburbFilter !== "all";
 
   const resolvedSelectedVisitId = visits.some((visit) => visit.id === selectedVisitId)
     ? selectedVisitId
@@ -163,6 +164,21 @@ export function VisitsPage() {
             ))}
           </select>
         </label>
+
+        {hasActiveFilters ? (
+          <button
+            type="button"
+            className="btn btn-ghost"
+            onClick={() => {
+              setStatusFilter("all");
+              setDayFilter("all");
+              setTeamFilter("all");
+              setSuburbFilter("all");
+            }}
+          >
+            Reset filters
+          </button>
+        ) : null}
       </section>
 
       <section className="stat-grid">
@@ -189,11 +205,26 @@ export function VisitsPage() {
 
       <section className="split-grid wide-right">
         <Card title="Visit history and metrics">
+          <p className="muted">
+            Select a visit row to load the execution panel. Keep this table filtered to active team/day during live dispatch.
+          </p>
           <DataTable
             columns={columns}
             rows={visits}
             windowSize={40}
-            empty={<EmptyState title="No visits for this filter" message="Adjust filters to view visit records." />}
+            empty={
+              <EmptyState
+                title="No visits for this filter"
+                message="No visit records matched. Reset filters or check schedule assignment."
+                actionLabel="Reset filters"
+                onAction={() => {
+                  setStatusFilter("all");
+                  setDayFilter("all");
+                  setTeamFilter("all");
+                  setSuburbFilter("all");
+                }}
+              />
+            }
           />
         </Card>
 
@@ -220,6 +251,7 @@ export function VisitsPage() {
             canManageLifecycle={canManageLifecycle}
             onQueueCompletionEmail={actions.queueCompletionEmail}
             onRetryCompletionJob={actions.retryCompletionJob}
+            mutationState={mutationState}
           />
         </Card>
       </section>

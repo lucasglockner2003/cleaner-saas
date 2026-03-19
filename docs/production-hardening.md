@@ -140,3 +140,7 @@ Detailed launch runbooks:
 - `docs/deployment/rollback-checklist.md`
 - `docs/deployment/schema-mismatch-audit.md`
 - `docs/deployment/env-reference.md`
+- `docs/deployment/deploy-command-templates.md`
+- `RELEASE_PREP/README.md`
+- `RUNBOOK.md`
+- `PILOT_READINESS.md`

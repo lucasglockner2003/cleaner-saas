@@ -10,6 +10,21 @@ This folder contains launch-ready database artifacts aligned with the current ap
   - adds indexes for payment, worker, and audit paths
   - enables RLS and creates baseline tenant/customer policies
 
+- `migrations/bundles/pilot-launch.manifest.json`
+  - ordered migration manifest for pilot release packaging
+  - used by `npm run db:bundle:pilot`
+- `migrations/generated/pilot-launch-bundle.sql`
+  - generated review artifact composed from source migrations
+
+## Seeds
+
+- `seeds/staging/reset.sql`
+- `seeds/staging/seed.sql`
+- run via:
+  - `npm run db:staging:reset`
+  - `npm run db:staging:seed`
+  - `npm run db:staging:reset-seed`
+
 ## Rollout flow
 
 1. Apply migration in staging.

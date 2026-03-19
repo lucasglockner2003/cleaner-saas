@@ -606,6 +606,44 @@ export function AppDataProvider({ children }) {
           "Recurring occurrence added to schedule."
         );
       },
+      getPilotCsvTemplate() {
+        return repositories.pilot.getClientCsvTemplate();
+      },
+      importPilotClientsCsv(csvText) {
+        return runMutation(
+          "importPilotClientsCsv",
+          (current) => repositories.pilot.importClientsCsv(current, csvText),
+          "Client CSV import completed."
+        );
+      },
+      generatePilotWeekSchedule(options = {}) {
+        return runMutation(
+          "generatePilotWeekSchedule",
+          (current) => repositories.pilot.generateWeekSchedule(current, options),
+          "Pilot week schedule generated."
+        );
+      },
+      generatePilotFakeVisits(options = {}) {
+        return runMutation(
+          "generatePilotFakeVisits",
+          (current) => repositories.pilot.generateFakeVisits(current, options),
+          "Synthetic visit execution run completed."
+        );
+      },
+      generatePilotTestInvoices(options = {}) {
+        return runMutation(
+          "generatePilotTestInvoices",
+          (current) => repositories.pilot.generateInvoices(current, options),
+          "Test invoice generation completed."
+        );
+      },
+      simulatePilotPayments(options = {}) {
+        return runMutation(
+          "simulatePilotPayments",
+          (current) => repositories.pilot.simulatePayments(current, options),
+          "Test payment simulation completed."
+        );
+      },
       async retryPendingSync() {
         if (!pendingSyncRef.current) {
           return {

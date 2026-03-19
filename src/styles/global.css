@@ -145,6 +145,11 @@ textarea:focus {
   gap: 0.8rem;
 }
 
+.feedback-banner strong {
+  display: block;
+  margin-bottom: 0.15rem;
+}
+
 .feedback-banner.is-success {
   background: #e9f8ef;
   color: #1f6947;
@@ -179,9 +184,15 @@ textarea:focus {
   border: 1px dashed #adc7d4;
   border-radius: 0.6rem;
   padding: 0.35rem 0.55rem;
-  font-size: 0.8rem;
+  font-size: 0.78rem;
   color: #386176;
   background: #f4fafc;
+  display: grid;
+  gap: 0.12rem;
+}
+
+.mutation-indicator strong {
+  font-size: 0.79rem;
 }
 
 .top-header {
@@ -615,6 +626,10 @@ textarea:focus {
   font-size: 0.86rem;
 }
 
+.empty-state .btn {
+  margin-top: 0.7rem;
+}
+
 .muted {
   color: var(--text-muted);
   font-size: 0.84rem;
@@ -636,6 +651,81 @@ textarea:focus {
   display: flex;
   flex-wrap: wrap;
   gap: 0.4rem;
+}
+
+.onboarding-step {
+  border: 1px solid #d9e6ee;
+  border-radius: 0.66rem;
+  background: #fbfdff;
+  padding: 0.55rem 0.62rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 0.7rem;
+}
+
+.validation-summary {
+  border: 1px solid #edc4c4;
+  background: #fff5f5;
+  border-radius: 0.62rem;
+  padding: 0.55rem 0.65rem;
+  display: grid;
+  gap: 0.35rem;
+}
+
+.visit-next-step {
+  border: 1px solid #c7dce8;
+  background: #f1f8fc;
+  border-radius: 0.58rem;
+  padding: 0.45rem 0.55rem;
+  color: #26556c;
+  font-size: 0.83rem;
+}
+
+.success-inline {
+  border: 1px solid #bfe1cd;
+  background: #edf9f1;
+  color: #1f6947;
+  border-radius: 0.58rem;
+  padding: 0.4rem 0.5rem;
+  font-size: 0.82rem;
+}
+
+.pilot-result {
+  margin-top: 0.65rem;
+  border-radius: 0.58rem;
+  padding: 0.5rem 0.6rem;
+  border: 1px solid transparent;
+  display: grid;
+  gap: 0.2rem;
+}
+
+.pilot-result.is-success {
+  background: #ebf8f0;
+  border-color: #c2e3d1;
+  color: #1f6a46;
+}
+
+.pilot-result.is-error {
+  background: #fff0f0;
+  border-color: #efc7c7;
+  color: #8c2626;
+}
+
+.pilot-textarea {
+  min-height: 220px;
+}
+
+.file-btn {
+  position: relative;
+  overflow: hidden;
+}
+
+.file-btn input[type="file"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
 }
 
 .schedule-grid {

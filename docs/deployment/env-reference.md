@@ -2,6 +2,7 @@
 
 ## Required (frontend runtime)
 
+- `VITE_RUNTIME_ENV` (`local|staging|production`)
 - `VITE_DATA_PROVIDER`
 - `VITE_AUTH_PROVIDER`
 - `VITE_ORGANIZATION_ID`
@@ -48,3 +49,10 @@ The app now surfaces runtime config issues in:
 - settings runtime status panel
 
 Launch should be blocked when critical issues are present.
+
+## Scripted validation
+
+```bash
+npm run check:env:staging
+npm run check:env:production
+```

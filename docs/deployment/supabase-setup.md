@@ -5,6 +5,9 @@
 Apply:
 
 - `supabase/migrations/20260320_launch_readiness.sql`
+- or generate/review bundle with:
+  - `npm run db:bundle:pilot`
+  - `supabase/migrations/generated/pilot-launch-bundle.sql`
 
 This migration adds:
 
@@ -75,4 +78,18 @@ from information_schema.columns
 where table_schema = 'public'
   and table_name = 'payments'
   and column_name in ('idempotency_key','provider_event_id','reconciliation_status','provider_last_error','last_reconciled_at');
+```
+
+## 7. Staging reset/seed flow
+
+Requirements:
+
+- `STAGING_DATABASE_URL`
+- `psql` in PATH (or `PSQL_BIN`)
+
+Commands:
+
+```bash
+npm run db:staging:reset
+npm run db:staging:seed
 ```

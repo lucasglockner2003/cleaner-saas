@@ -14,6 +14,7 @@ import { createSubscriptionsRepository } from "./subscriptionsRepository";
 import { createCrmRepository } from "./crmRepository";
 import { createGrowthRepository } from "./growthRepository";
 import { createOperationsRepository } from "./operationsRepository";
+import { createPilotRepository } from "./pilotRepository";
 
 export function createRepositoryBundle() {
   return {
@@ -32,6 +33,7 @@ export function createRepositoryBundle() {
     subscriptions: createSubscriptionsRepository(),
     crm: createCrmRepository(),
     growth: createGrowthRepository(),
-    operations: createOperationsRepository()
+    operations: createOperationsRepository(),
+    pilot: createPilotRepository()
   };
 }

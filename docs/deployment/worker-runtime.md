@@ -39,6 +39,13 @@ Recommended:
 Reference template:
 
 - `infra/workers/operations/runnerExample.mjs`
+- `infra/workers/operations/runCycleExample.mjs` (CLI/loop runner template)
+
+Run local worker cycle:
+
+```bash
+npm run worker:operations:example
+```
 
 ## Operational safeguards
 

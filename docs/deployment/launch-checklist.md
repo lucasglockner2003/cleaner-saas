@@ -1,5 +1,17 @@
 # Launch Checklist
 
+Use `RELEASE_PREP/*` checklists as the canonical rollout gate set.
+
+## Fast command gates
+
+```bash
+npm run check:env:staging
+npm run check:env:production
+npm run test:run
+npm run build
+npm run db:bundle:pilot
+```
+
 ## Pre-launch gates
 
 1. `npm run test:run` passes.

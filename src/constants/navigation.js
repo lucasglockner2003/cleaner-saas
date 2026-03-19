@@ -14,5 +14,6 @@ export const NAV_ITEMS = [
   { path: "/bookings", label: "Bookings", allowedRoles: [ROLES.OWNER, ROLES.OPS] },
   { path: "/recurring", label: "Recurring", allowedRoles: [ROLES.OWNER, ROLES.OPS] },
   { path: "/communications", label: "Comms", allowedRoles: [ROLES.OWNER, ROLES.OPS] },
+  { path: "/pilot-tools", label: "Pilot Tools", allowedRoles: [ROLES.OWNER, ROLES.OPS] },
   { path: "/settings", label: "Settings", allowedRoles: [ROLES.OWNER] }
 ];

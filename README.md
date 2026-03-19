@@ -103,6 +103,14 @@ npm run test:run
 npm run build
 ```
 
+Release gates:
+
+```bash
+npm run check:env:staging
+npm run check:env:production
+npm run db:bundle:pilot
+```
+
 Portal login (local demo): `http://localhost:5173/portal/login`
 
 ## Environment
@@ -168,3 +176,8 @@ Copy `.env.example` to `.env` and configure provider mode:
 - `docs/deployment/post-deploy-checks.md`
 - `docs/deployment/rollback-checklist.md`
 - `docs/deployment/schema-mismatch-audit.md`
+- `docs/deployment/deploy-command-templates.md`
+- `RELEASE_PREP/README.md`
+- `RUNBOOK.md`
+- `PILOT_READINESS.md`
+- `AGENTS.md`

@@ -80,6 +80,11 @@ export function CommunicationJobsPanel({
       render: (row) => formatDateTime(row.next_attempt_at)
     },
     {
+      key: "error_message",
+      label: "Last error",
+      render: (row) => row.error_message || "-"
+    },
+    {
       key: "action",
       label: "Retry",
       render: (row) =>
@@ -93,6 +98,12 @@ export function CommunicationJobsPanel({
 
   return (
     <Card title="Communication job monitor" subtitle="Unified queue for reminders, invoices, and completion emails">
+      {jobStats.overall.failed > 0 ? (
+        <p className="field-error">Failed jobs detected. Retry items after checking payloads and provider connectivity.</p>
+      ) : (
+        <p className="muted">Queue is stable. Monitor retry counts to catch intermittent provider issues early.</p>
+      )}
+
       <div className="cards-grid">
         <article className="row-item">
           {renderTypeSummary("Overall", jobStats.overall)}

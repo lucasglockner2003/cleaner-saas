@@ -88,6 +88,44 @@ export function SettingsPage() {
   const auditSummary = auditService.getAuditSummary(db);
   const recentAuditEvents = auditService.listAuditEvents(db).slice(0, 10);
   const configReport = getRuntimeConfigReport();
+  const attentionSummary = [
+    {
+      key: "config",
+      label: "Configuration blockers",
+      value: configReport.criticalIssues.length,
+      tone: configReport.criticalIssues.length ? "danger" : "success",
+      hint: "Resolve before pilot dispatch."
+    },
+    {
+      key: "sync",
+      label: "Sync degraded",
+      value: persistence.syncState.status === "healthy" ? 0 : 1,
+      tone: persistence.syncState.status === "healthy" ? "success" : "danger",
+      hint: "Retry pending sync if degraded."
+    },
+    {
+      key: "operation_failures",
+      label: "Failed operation jobs",
+      value: operationStats.failed,
+      tone: operationStats.failed > 0 ? "danger" : "success",
+      hint: "Check queue for retry-safe recovery."
+    },
+    {
+      key: "communication_failures",
+      label: "Failed communication jobs",
+      value: jobStats.overall.failed,
+      tone: jobStats.overall.failed > 0 ? "danger" : "success",
+      hint: "Retry reminders/invoices/completion jobs."
+    },
+    {
+      key: "proof_gaps",
+      label: "Missing required proof",
+      value: proofStats.proofMissingRequiredVisits,
+      tone: proofStats.proofMissingRequiredVisits > 0 ? "warning" : "success",
+      hint: "Resolve before sending completion evidence."
+    }
+  ];
+  const totalAttentionItems = attentionSummary.reduce((total, item) => total + item.value, 0);
 
   const firstScheduledVisit = db.scheduledVisits.find((visit) => visit.status === "scheduled");
   const firstCompletedVisit = db.scheduledVisits.find((visit) => visit.status === "completed");
@@ -173,6 +211,55 @@ export function SettingsPage() {
             ) : null}
           </>
         ) : null}
+      </Card>
+
+      <Card title="Operator attention center" subtitle="Most important pilot issues requiring action right now">
+        <div className="detail-list">
+          <p>
+            <span>Total attention count</span>
+            <strong>{totalAttentionItems}</strong>
+          </p>
+          <p>
+            <span>Queue health</span>
+            <strong>{operationStats.failed > 0 || jobStats.overall.failed > 0 ? "needs attention" : "healthy"}</strong>
+          </p>
+        </div>
+
+        <div className="stack-list">
+          {attentionSummary.map((item) => (
+            <article key={item.key} className="row-item">
+              <div>
+                <strong>{item.label}</strong>
+                <p className="muted">{item.hint}</p>
+              </div>
+              <Badge value={item.value} tone={item.tone} />
+            </article>
+          ))}
+        </div>
+
+        <div className="inline-actions">
+          <button
+            type="button"
+            className="btn btn-ghost"
+            onClick={() => actions.runOperationJobCycle({ maxJobs: 20 })}
+            disabled={mutationState.runOperationJobCycle}
+          >
+            {mutationState.runOperationJobCycle ? "Running jobs..." : "Run operation jobs now"}
+          </button>
+          <button
+            type="button"
+            className="btn btn-ghost"
+            onClick={() => actions.runPaymentReconciliationCycle({ maxPayments: 20 })}
+            disabled={mutationState.runPaymentReconciliationCycle}
+          >
+            {mutationState.runPaymentReconciliationCycle ? "Reconciling..." : "Run payment reconciliation"}
+          </button>
+          {persistence.syncState.status !== "healthy" ? (
+            <button type="button" className="btn btn-ghost" onClick={() => actions.retryPendingSync()}>
+              Retry sync
+            </button>
+          ) : null}
+        </div>
       </Card>
 
       <Card title="Workflow readiness by module" subtitle="Implemented, scaffolded, and intentionally deferred boundaries">
@@ -337,6 +424,7 @@ export function SettingsPage() {
             type="button"
             className="btn btn-ghost"
             onClick={() => actions.queueOperationJob({ job_type: "reminder_dispatch", payload: { maxJobs: 30 } })}
+            disabled={mutationState.queueOperationJob}
           >
             Queue reminder job
           </button>
@@ -344,6 +432,7 @@ export function SettingsPage() {
             type="button"
             className="btn btn-ghost"
             onClick={() => actions.queueOperationJob({ job_type: "invoice_dispatch", payload: { maxJobs: 20 } })}
+            disabled={mutationState.queueOperationJob}
           >
             Queue invoice job
           </button>
@@ -351,6 +440,7 @@ export function SettingsPage() {
             type="button"
             className="btn btn-ghost"
             onClick={() => actions.queueOperationJob({ job_type: "lifecycle_refresh", payload: { winBackThresholdDays: 45 } })}
+            disabled={mutationState.queueOperationJob}
           >
             Queue lifecycle job
           </button>
@@ -358,6 +448,7 @@ export function SettingsPage() {
             type="button"
             className="btn btn-ghost"
             onClick={() => actions.queueOperationJob({ job_type: "payment_reconciliation", payload: { maxPayments: 20 } })}
+            disabled={mutationState.queueOperationJob}
           >
             Queue payment job
           </button>
@@ -381,6 +472,8 @@ export function SettingsPage() {
                     {job.status} | attempts {job.attempt_count}/{job.max_attempts}
                   </p>
                   <p className="muted">worker {job.worker_id || "-"}</p>
+                  <p className="muted">scheduled {job.scheduled_for || "-"}</p>
+                  <p className="muted">next attempt {job.next_attempt_at || "-"}</p>
                   <p className="muted">{job.error_message || "-"}</p>
                 </div>
                 <div className="inline-actions">

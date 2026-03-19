@@ -23,6 +23,21 @@ function subscriptionTone(status) {
   return "neutral";
 }
 
+function getOverdueDays(dueDate) {
+  if (!dueDate) {
+    return 0;
+  }
+
+  const due = new Date(`${dueDate}T00:00:00.000Z`);
+  const today = new Date();
+  const utcToday = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth(), today.getUTCDate()));
+  const diffMs = utcToday.getTime() - due.getTime();
+  if (diffMs <= 0) {
+    return 0;
+  }
+  return Math.floor(diffMs / (1000 * 60 * 60 * 24));
+}
+
 const PLAN_FORM_DEFAULTS = {
   code: "",
   name: "",
@@ -69,6 +84,26 @@ export function MonetizationPage() {
   const invoiceStats = useMemo(() => invoicesService.getInvoiceStats(db), [db]);
   const invoices = useMemo(() => invoicesService.listInvoices(db), [db]);
   const openInvoices = invoices.filter((invoice) => invoice.status === "issued" && invoice.balance_due > 0);
+  const invoiceAttentionRows = useMemo(
+    () =>
+      openInvoices
+        .map((invoice) => {
+          const overdueDays = getOverdueDays(invoice.due_date);
+          return {
+            ...invoice,
+            overdue_days: overdueDays,
+            attention_tone: overdueDays >= 7 ? "danger" : overdueDays > 0 ? "warning" : invoice.pending_payment_amount > 0 ? "neutral" : "warning"
+          };
+        })
+        .sort((a, b) => {
+          if (b.overdue_days !== a.overdue_days) {
+            return b.overdue_days - a.overdue_days;
+          }
+          return b.balance_due - a.balance_due;
+        })
+        .slice(0, 5),
+    [openInvoices]
+  );
   const paymentRows = useMemo(() => paymentsService.listPayments(db, { month }), [db, month]);
   const plans = useMemo(() => subscriptionsService.listSubscriptionPlans(db), [db]);
   const subscriptions = useMemo(() => subscriptionsService.listClientSubscriptions(db), [db]);
@@ -308,6 +343,9 @@ export function MonetizationPage() {
 
       <section className="split-grid">
         <Card title="Record payment" subtitle="Capture manual/provider-linked payments against invoice balances">
+          <p className="muted">
+            Manual provider saves a payment directly. Stripe/other provider mode prepares an intent and final status is reconciled by events.
+          </p>
           <form className="form-grid" onSubmit={submitPayment}>
             <label className="span-2">
               Invoice
@@ -321,6 +359,9 @@ export function MonetizationPage() {
               </select>
               {paymentErrors.invoice_id ? <span className="field-error">{paymentErrors.invoice_id}</span> : null}
             </label>
+            {!openInvoices.length ? (
+              <p className="muted span-2">No issued invoices with outstanding balance. Issue drafts first or switch invoice status.</p>
+            ) : null}
 
             <label>
               Amount
@@ -438,6 +479,37 @@ export function MonetizationPage() {
               </ul>
             </>
           ) : null}
+          <hr className="divider" />
+          <h4>Invoices needing payment action</h4>
+          {invoiceAttentionRows.length ? (
+            <div className="stack-list">
+              {invoiceAttentionRows.map((invoice) => (
+                <article key={invoice.id} className="row-item">
+                  <div>
+                    <strong>{invoice.invoice_number || invoice.id}</strong>
+                    <p className="muted">
+                      {invoice.client_name} | due {invoice.due_date || "-"} | outstanding ${invoice.balance_due.toFixed(2)}
+                    </p>
+                    <p className="muted">
+                      {invoice.overdue_days > 0 ? `${invoice.overdue_days} day(s) overdue` : "Not overdue"} | latest payment{" "}
+                      {invoice.latest_payment_status}
+                    </p>
+                  </div>
+                  <div className="inline-actions">
+                    <Badge
+                      value={invoice.overdue_days > 0 ? `overdue ${invoice.overdue_days}d` : "awaiting payment"}
+                      tone={invoice.attention_tone}
+                    />
+                    <button type="button" className="btn btn-ghost" onClick={() => handleSelectInvoice(invoice.id)}>
+                      Use in payment form
+                    </button>
+                  </div>
+                </article>
+              ))}
+            </div>
+          ) : (
+            <p className="muted">No issued invoices currently require payment follow-up.</p>
+          )}
         </Card>
       </section>
 

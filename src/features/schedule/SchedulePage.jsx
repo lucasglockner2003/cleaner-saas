@@ -17,11 +17,23 @@ export function SchedulePage() {
   const stats = scheduleService.getScheduleQuickStats(db);
   const optimizationSignals = scheduleService.getWeeklyOptimizationSignals(db);
   const [teamFilter, setTeamFilter] = useState("all");
+  const [riskFilter, setRiskFilter] = useState("all");
   const canManageDispatch = canAccess([ROLES.OWNER, ROLES.OPS]);
 
+  function dayNeedsAttention(day) {
+    return (
+      day.daySummary?.overbookRisk !== "low" ||
+      day.daySummary?.latenessRiskLevel !== "low" ||
+      day.loadSignal?.signal === "overloaded"
+    );
+  }
+
   const dispatchDays = useMemo(
-    () => week.filter((day) => (teamFilter === "all" ? true : day.team_id === teamFilter)),
-    [teamFilter, week]
+    () =>
+      week
+        .filter((day) => (teamFilter === "all" ? true : day.team_id === teamFilter))
+        .filter((day) => (riskFilter === "attention" ? dayNeedsAttention(day) : true)),
+    [riskFilter, teamFilter, week]
   );
 
   const summaryRows = dispatchDays.map((day) => ({
@@ -86,6 +98,27 @@ export function SchedulePage() {
             ))}
           </select>
         </label>
+
+        <label>
+          Risk focus
+          <select value={riskFilter} onChange={(event) => setRiskFilter(event.target.value)}>
+            <option value="all">All day boards</option>
+            <option value="attention">Only needs-attention days</option>
+          </select>
+        </label>
+
+        {(teamFilter !== "all" || riskFilter !== "all") ? (
+          <button
+            type="button"
+            className="btn btn-ghost"
+            onClick={() => {
+              setTeamFilter("all");
+              setRiskFilter("all");
+            }}
+          >
+            Reset filters
+          </button>
+        ) : null}
       </section>
 
       <section className="stat-grid">
@@ -100,6 +133,25 @@ export function SchedulePage() {
       </section>
 
       <section className="split-grid">
+        <Card title="Dispatch legend">
+          <div className="row-chip-list">
+            <Badge value="Overbook high" tone="danger" />
+            <span className="muted">Projected day overrun is severe and likely needs reordering or reassignment.</span>
+          </div>
+          <div className="row-chip-list">
+            <Badge value="Lateness medium/high" tone="warning" />
+            <span className="muted">Start times are at risk due to travel + duration pressure.</span>
+          </div>
+          <div className="row-chip-list">
+            <Badge value="Load overloaded" tone="danger" />
+            <span className="muted">Team utilization is above safe range for this day.</span>
+          </div>
+          <div className="row-chip-list">
+            <Badge value="Geo ready" tone="success" />
+            <span className="muted">Higher geocode coverage improves route confidence.</span>
+          </div>
+        </Card>
+
         <Card title="Routing intelligence snapshot" subtitle="Heuristic optimization and map-readiness indicators">
           <div className="detail-list">
             <p>
@@ -157,7 +209,17 @@ export function SchedulePage() {
         <DataTable
           columns={summaryColumns}
           rows={summaryRows}
-          empty={<EmptyState title="No day summaries" message="No schedule data available for this filter." />}
+          empty={
+            <EmptyState
+              title="No day summaries"
+              message="No schedule data available for this filter."
+              actionLabel="Reset filters"
+              onAction={() => {
+                setTeamFilter("all");
+                setRiskFilter("all");
+              }}
+            />
+          }
         />
       </Card>
 
@@ -165,41 +227,53 @@ export function SchedulePage() {
         title="Weekly dispatch board (Monday-Friday)"
         subtitle="Order visits, assign teams/cleaners, and run start/finish actions from one board"
       >
-        <div className="schedule-grid">
-          {dispatchDays.map((day) => (
-            <ScheduleDayColumn
-              key={`${day.day_name}-${day.team_id ?? "none"}`}
-              day={day}
-              teams={db.teams}
-              employees={db.employees.filter((employee) => employee.status === "active")}
-              onStart={(visitId) => actions.startVisit(visitId)}
-              onFinish={(visitId) => actions.finishVisit(visitId, "Finished from schedule board")}
-              onCancel={(visitId) => {
-                if (!canManageDispatch) {
-                  return null;
-                }
+        {dispatchDays.length ? (
+          <div className="schedule-grid">
+            {dispatchDays.map((day) => (
+              <ScheduleDayColumn
+                key={`${day.day_name}-${day.team_id ?? "none"}`}
+                day={day}
+                teams={db.teams}
+                employees={db.employees.filter((employee) => employee.status === "active")}
+                onStart={(visitId) => actions.startVisit(visitId)}
+                onFinish={(visitId) => actions.finishVisit(visitId, "Finished from schedule board")}
+                onCancel={(visitId) => {
+                  if (!canManageDispatch) {
+                    return null;
+                  }
 
-                const confirmed = window.confirm("Cancel this scheduled visit?");
-                if (!confirmed) {
-                  return null;
-                }
+                  const confirmed = window.confirm("Cancel this scheduled visit?");
+                  if (!confirmed) {
+                    return null;
+                  }
 
-                return actions.cancelVisit(visitId, "Cancelled by dispatch board");
-              }}
-              onReopen={(visitId) => actions.reopenVisit(visitId)}
-              onMove={(visitId, direction) => (canManageDispatch ? actions.moveVisit(visitId, direction) : null)}
-              onAssignTeam={(visitId, teamId) => (canManageDispatch ? actions.assignVisitTeam(visitId, teamId) : null)}
-              onAssignEmployee={(visitId, employeeId) =>
-                canManageDispatch ? actions.assignVisitEmployee(visitId, employeeId) : null
-              }
-              onApplySuggestedOrder={(scheduleDayId) =>
-                canManageDispatch ? actions.applySuggestedRouteOrder(scheduleDayId) : null
-              }
-              applySuggestedPending={Boolean(mutationState.applySuggestedRouteOrder)}
-              canManageDispatch={canManageDispatch}
-            />
-          ))}
-        </div>
+                  return actions.cancelVisit(visitId, "Cancelled by dispatch board");
+                }}
+                onReopen={(visitId) => actions.reopenVisit(visitId)}
+                onMove={(visitId, direction) => (canManageDispatch ? actions.moveVisit(visitId, direction) : null)}
+                onAssignTeam={(visitId, teamId) => (canManageDispatch ? actions.assignVisitTeam(visitId, teamId) : null)}
+                onAssignEmployee={(visitId, employeeId) =>
+                  canManageDispatch ? actions.assignVisitEmployee(visitId, employeeId) : null
+                }
+                onApplySuggestedOrder={(scheduleDayId) =>
+                  canManageDispatch ? actions.applySuggestedRouteOrder(scheduleDayId) : null
+                }
+                mutationState={mutationState}
+                canManageDispatch={canManageDispatch}
+              />
+            ))}
+          </div>
+        ) : (
+          <EmptyState
+            title="No dispatch days match this filter"
+            message="Reset team/risk filters to restore the weekly board."
+            actionLabel="Reset filters"
+            onAction={() => {
+              setTeamFilter("all");
+              setRiskFilter("all");
+            }}
+          />
+        )}
       </Card>
     </div>
   );

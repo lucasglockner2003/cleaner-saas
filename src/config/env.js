@@ -34,7 +34,28 @@ function normalizePaymentProvider(value, fallback = "manual") {
   return fallback;
 }
 
+function normalizeRuntimeEnv(value, fallback = "local") {
+  const normalized = String(value || "").toLowerCase();
+  if (normalized === "local" || normalized === "staging" || normalized === "production") {
+    return normalized;
+  }
+  return fallback;
+}
+
+function isValidUrl(value) {
+  if (!value) {
+    return false;
+  }
+  try {
+    const parsed = new URL(value);
+    return parsed.protocol === "http:" || parsed.protocol === "https:";
+  } catch (_error) {
+    return false;
+  }
+}
+
 export const appEnv = {
+  runtimeEnv: normalizeRuntimeEnv(getEnvValue("VITE_RUNTIME_ENV", "local"), "local"),
   dataProvider: normalizeProvider(getEnvValue("VITE_DATA_PROVIDER", "local"), "local"),
   authProvider: normalizeProvider(getEnvValue("VITE_AUTH_PROVIDER", "local"), "local"),
   organizationId: getEnvValue("VITE_ORGANIZATION_ID", "org-default"),
@@ -59,6 +80,13 @@ export function isSupabaseConfigured() {
 export function getRuntimeConfigReport() {
   const criticalIssues = [];
   const warnings = [];
+  const trackedUrls = [
+    { key: "VITE_SUPABASE_URL", value: appEnv.supabaseUrl },
+    { key: "VITE_EMAIL_WEBHOOK_URL", value: appEnv.emailWebhookUrl },
+    { key: "VITE_PHOTO_WEBHOOK_URL", value: appEnv.photoWebhookUrl },
+    { key: "VITE_MAP_WEBHOOK_URL", value: appEnv.mapWebhookUrl },
+    { key: "VITE_PAYMENT_WEBHOOK_URL", value: appEnv.paymentWebhookUrl }
+  ];
 
   if (appEnv.dataProvider === "supabase" && !isSupabaseConfigured()) {
     criticalIssues.push("Supabase data provider is enabled but URL/Anon key is missing.");
@@ -69,7 +97,11 @@ export function getRuntimeConfigReport() {
   }
 
   if (!appEnv.organizationId || appEnv.organizationId === "org-default") {
-    warnings.push("`VITE_ORGANIZATION_ID` is default/missing; set a real tenant id for production.");
+    if (appEnv.runtimeEnv === "production") {
+      criticalIssues.push("`VITE_ORGANIZATION_ID` cannot remain default in production.");
+    } else {
+      warnings.push("`VITE_ORGANIZATION_ID` is default/missing; set a real tenant id for production.");
+    }
   }
 
   if (appEnv.emailTransport === "webhook" && !appEnv.emailWebhookUrl) {
@@ -87,14 +119,34 @@ export function getRuntimeConfigReport() {
   if (appEnv.paymentProvider !== "manual" && !appEnv.paymentWebhookUrl) {
     criticalIssues.push("Provider-backed payments require `VITE_PAYMENT_WEBHOOK_URL`.");
   }
+  if (appEnv.paymentProvider !== "manual" && !appEnv.paymentGatewayAuthToken) {
+    criticalIssues.push("Provider-backed payments require `VITE_PAYMENT_GATEWAY_AUTH_TOKEN`.");
+  }
 
   if (appEnv.paymentProvider === "stripe") {
     if (!appEnv.stripePublishableKey) {
       criticalIssues.push("Stripe payment mode requires `VITE_STRIPE_PUBLISHABLE_KEY`.");
     }
-    if (!appEnv.paymentGatewayAuthToken) {
-      warnings.push("`VITE_PAYMENT_GATEWAY_AUTH_TOKEN` is missing; gateway calls are unauthenticated.");
+    if (appEnv.stripePublishableKey && !appEnv.stripePublishableKey.startsWith("pk_")) {
+      warnings.push("`VITE_STRIPE_PUBLISHABLE_KEY` is present but does not look like a Stripe publishable key.");
     }
+  }
+
+  trackedUrls.forEach((entry) => {
+    if (!entry.value) {
+      return;
+    }
+    if (!isValidUrl(entry.value)) {
+      criticalIssues.push(`${entry.key} is not a valid URL.`);
+      return;
+    }
+    if (appEnv.runtimeEnv === "production" && entry.value.startsWith("http://")) {
+      criticalIssues.push(`${entry.key} must use HTTPS in production.`);
+    }
+  });
+
+  if (!["local", "staging", "production"].includes(appEnv.runtimeEnv)) {
+    warnings.push("`VITE_RUNTIME_ENV` should be local, staging, or production.");
   }
 
   return {

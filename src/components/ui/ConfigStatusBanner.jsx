@@ -14,9 +14,13 @@ export function ConfigStatusBanner({ report }) {
             : `Configuration warnings: ${report.warnings.length}`}
         </p>
         {hasCritical ? (
-          <p className="muted">{report.criticalIssues[0]}</p>
+          <p className="muted">
+            {report.criticalIssues[0]} Open Settings to review the full runtime checklist.
+          </p>
         ) : (
-          <p className="muted">{report.warnings[0]}</p>
+          <p className="muted">
+            {report.warnings[0]} Keep warning count near zero before pilot go-live.
+          </p>
         )}
       </div>
     </div>

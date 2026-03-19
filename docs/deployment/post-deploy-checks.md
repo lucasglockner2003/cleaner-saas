@@ -1,5 +1,7 @@
 # Post-Deploy Checks
 
+Use together with `RELEASE_PREP/smoke-test-checklist.md`.
+
 ## Immediate (first 15 minutes)
 
 1. Open Settings and confirm no critical config blockers.
