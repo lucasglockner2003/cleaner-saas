@@ -18,8 +18,8 @@ function renderInvoiceActions(row, actions) {
         </button>
       ) : null}
       {row.status === "issued" ? (
-        <button type="button" className="btn btn-ghost" onClick={() => actions.onMarkPaid(row.id)}>
-          Mark paid
+        <button type="button" className="btn btn-ghost" onClick={() => actions.onRecordPayment(row.id, row.balance_due)}>
+          Record payment
         </button>
       ) : null}
       {row.status === "failed" ? (
@@ -45,7 +45,7 @@ export function InvoiceOpsPanel({
   onGenerateDrafts,
   onRunDispatchCycle,
   onIssueInvoice,
-  onMarkInvoicePaid,
+  onRecordInvoicePayment,
   onMarkInvoiceFailed,
   onQueueInvoiceEmail
 }) {
@@ -69,12 +69,17 @@ export function InvoiceOpsPanel({
       render: (row) => `$${Number(row.balance_due ?? row.total ?? 0).toFixed(2)}`
     },
     {
+      key: "captured_amount",
+      label: "Captured",
+      render: (row) => `$${Number(row.captured_amount ?? 0).toFixed(2)}`
+    },
+    {
       key: "actions",
       label: "Actions",
       render: (row) =>
         renderInvoiceActions(row, {
           onIssue: onIssueInvoice,
-          onMarkPaid: onMarkInvoicePaid,
+          onRecordPayment: onRecordInvoicePayment,
           onMarkFailed: onMarkInvoiceFailed,
           onQueueEmail: onQueueInvoiceEmail
         })

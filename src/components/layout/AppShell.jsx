@@ -3,10 +3,13 @@ import { TopHeader } from "./TopHeader";
 import { useAppData } from "../../hooks/useAppData";
 import { FeedbackBanner } from "../ui/FeedbackBanner";
 import { SyncStatusBanner } from "../ui/SyncStatusBanner";
+import { ConfigStatusBanner } from "../ui/ConfigStatusBanner";
+import { getRuntimeConfigReport } from "../../config/env";
 
 export function AppShell({ children }) {
   const { lastFeedback, actions, isBootstrapping, persistence, mutationState } = useAppData();
   const isMutating = Object.values(mutationState || {}).some(Boolean);
+  const configReport = getRuntimeConfigReport();
 
   if (isBootstrapping) {
     return (
@@ -23,6 +26,7 @@ export function AppShell({ children }) {
         <TopHeader />
         {isMutating ? <div className="mutation-indicator">Saving changes...</div> : null}
         <FeedbackBanner feedback={lastFeedback} onDismiss={actions.clearFeedback} />
+        <ConfigStatusBanner report={configReport} />
         <SyncStatusBanner persistence={persistence} onRetry={actions.retryPendingSync} />
         <main className="app-content">{children}</main>
       </div>

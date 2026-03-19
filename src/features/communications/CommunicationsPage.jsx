@@ -5,6 +5,7 @@ import {
   communicationJobsService,
   completionService,
   invoicesService,
+  paymentsService,
   photoStorageService,
   remindersService
 } from "../../services";
@@ -46,6 +47,7 @@ export function CommunicationsPage() {
   const reminderStats = useMemo(() => remindersService.getReminderStats(db), [db]);
   const invoices = useMemo(() => invoicesService.listInvoices(db), [db]);
   const invoiceStats = useMemo(() => invoicesService.getInvoiceStats(db), [db]);
+  const paymentSummary = useMemo(() => paymentsService.getPaymentsSummary(db), [db]);
   const invoiceCommunicationStats = useMemo(() => invoicesService.getInvoiceCommunicationStats(db), [db]);
   const completionRows = useMemo(() => completionService.listCompletionCommunicationStatus(db), [db]);
   const completionStats = useMemo(() => completionService.getCompletionCommunicationStats(db), [db]);
@@ -74,6 +76,7 @@ export function CommunicationsPage() {
         <StatCard label="Retry Scheduled" value={jobStats.overall.retry_scheduled} hint="Jobs waiting another attempt" />
         <StatCard label="Failed Jobs" value={jobStats.overall.failed} hint="Needs operator action" />
         <StatCard label="Proof Missing" value={proofStats.proofMissingRequiredVisits} hint="Completed visits requiring proof" />
+        <StatCard label="Captured Payments" value={`$${paymentSummary.capturedAmount.toFixed(2)}`} hint="Invoice-linked transactions" />
       </section>
 
       <ReminderOpsPanel
@@ -95,7 +98,16 @@ export function CommunicationsPage() {
         onGenerateDrafts={handleGenerateDrafts}
         onRunDispatchCycle={() => actions.runInvoiceDispatchCycle({ maxJobs: 30 })}
         onIssueInvoice={(invoiceId) => actions.setInvoiceStatus(invoiceId, "issued")}
-        onMarkInvoicePaid={(invoiceId) => actions.setInvoiceStatus(invoiceId, "paid")}
+        onRecordInvoicePayment={(invoiceId, amount) =>
+          actions.createPayment({
+            invoice_id: invoiceId,
+            amount: Number(amount),
+            method_type: "bank_transfer",
+            provider: "manual",
+            status: "captured",
+            notes: "Captured from communications billing panel"
+          })
+        }
         onMarkInvoiceFailed={(invoiceId) => actions.setInvoiceStatus(invoiceId, "failed")}
         onQueueInvoiceEmail={actions.queueInvoiceEmail}
       />

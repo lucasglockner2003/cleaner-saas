@@ -9,6 +9,11 @@ import { createInvoicesRepository } from "./invoicesRepository";
 import { createCompletionRepository } from "./completionRepository";
 import { createBookingsRepository } from "./bookingsRepository";
 import { createRecurringRepository } from "./recurringRepository";
+import { createPaymentsRepository } from "./paymentsRepository";
+import { createSubscriptionsRepository } from "./subscriptionsRepository";
+import { createCrmRepository } from "./crmRepository";
+import { createGrowthRepository } from "./growthRepository";
+import { createOperationsRepository } from "./operationsRepository";
 
 export function createRepositoryBundle() {
   return {
@@ -22,6 +27,11 @@ export function createRepositoryBundle() {
     invoices: createInvoicesRepository(),
     completion: createCompletionRepository(),
     bookings: createBookingsRepository(),
-    recurring: createRecurringRepository()
+    recurring: createRecurringRepository(),
+    payments: createPaymentsRepository(),
+    subscriptions: createSubscriptionsRepository(),
+    crm: createCrmRepository(),
+    growth: createGrowthRepository(),
+    operations: createOperationsRepository()
   };
 }

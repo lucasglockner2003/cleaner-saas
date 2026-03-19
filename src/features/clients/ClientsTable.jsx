@@ -18,6 +18,7 @@ export function ClientsTable({ clients }) {
       render: (row) => <Link to={`/clients/${row.id}`}>{row.full_name}</Link>
     },
     { key: "suburb", label: "Suburb" },
+    { key: "acquisition_source", label: "Source", render: (row) => row.acquisition_source || "-" },
     { key: "service_type_name", label: "Service" },
     { key: "cleaning_frequency", label: "Frequency" },
     {

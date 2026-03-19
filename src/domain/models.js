@@ -20,8 +20,17 @@ export const modelCatalog = {
   productMovements: "Inventory movement ledger.",
   reminders: "Queued reminder communications.",
   invoices: "Billing lifecycle model with communication status.",
+  payments: "Payment transactions linked to invoices and clients.",
+  paymentEvents: "Provider webhook/reconciliation events for idempotent payment lifecycle handling.",
+  subscriptionPlans: "Plan catalog for recurring revenue tiers and billing cycles.",
+  clientSubscriptions: "Client-to-plan assignments with recurring billing lifecycle status.",
   ratings: "Future service quality feedback model.",
   communicationJobs: "Asynchronous communication workflow jobs with delivery lifecycle.",
   bookingRequests: "Customer and lead booking requests pending internal review/approval.",
-  portalAccounts: "Customer portal account records linked to client profiles."
+  portalAccounts: "Customer portal account records linked to client profiles.",
+  crmProfiles: "Lifecycle/CRM enrichment profiles by client.",
+  referrals: "Referral lead and reward lifecycle records.",
+  growthCampaigns: "Growth campaign records with outreach and conversion stats.",
+  operationJobs: "Background operations queue for reminders, billing, lifecycle, and payment reconciliation.",
+  auditEvents: "Immutable audit timeline for critical operational and financial mutations."
 };

@@ -1,8 +1,10 @@
 import { buildNextId, cloneDatabase, findById, removeById, safeTrim } from "../helpers";
 import { durationDelta } from "../../utils/scheduleEstimator";
 import { parseTimeToMinutes } from "../../utils/dateTime";
+import { appEnv } from "../../config/env";
 
 const DEFAULT_CLIENT_DURATION = 90;
+const ACQUISITION_SOURCES = ["google", "facebook", "website", "referral", "phone", "portal", "manual"];
 
 function sanitizeClientPayload(payload) {
   return {
@@ -14,6 +16,8 @@ function sanitizeClientPayload(payload) {
     service_type_id: safeTrim(payload.service_type_id),
     cleaning_frequency: safeTrim(payload.cleaning_frequency),
     estimated_duration_min: Number(payload.estimated_duration_min ?? DEFAULT_CLIENT_DURATION),
+    acquisition_source: safeTrim(payload.acquisition_source).toLowerCase() || "website",
+    referral_source: safeTrim(payload.referral_source),
     notes_summary: safeTrim(payload.notes_summary),
     special_instructions: safeTrim(payload.special_instructions)
   };
@@ -79,6 +83,10 @@ export function validateClientPayload(payload, db, options = {}) {
     normalized.estimated_duration_min > 420
   ) {
     errors.estimated_duration_min = "Estimated duration must be between 30 and 420 minutes.";
+  }
+
+  if (!ACQUISITION_SOURCES.includes(normalized.acquisition_source)) {
+    errors.acquisition_source = "Acquisition source is invalid.";
   }
 
   const duplicate = db.clients.find((client) => {
@@ -159,6 +167,9 @@ export function getClientDetailSnapshot(db, clientId) {
   const recurringServices = (db.recurringServices ?? [])
     .filter((item) => item.client_id === clientId)
     .sort((a, b) => (a.next_service_date || "").localeCompare(b.next_service_date || ""));
+  const crmProfile = (db.crmProfiles ?? []).find((item) => item.client_id === clientId) ?? null;
+  const invoiceRows = (db.invoices ?? []).filter((invoice) => invoice.client_id === clientId);
+  const paymentRows = (db.payments ?? []).filter((payment) => payment.client_id === clientId);
 
   const visitHistory = db.scheduledVisits
     .filter((visit) => visit.client_id === clientId)
@@ -187,6 +198,11 @@ export function getClientDetailSnapshot(db, clientId) {
   const onTimeCompleted = completed.filter((visit) => (visit.delta_min ?? 0) <= 0).length;
   const overrunVisits = completed.filter((visit) => (visit.delta_min ?? 0) > 0).length;
   const proofVisits = visitHistory.filter((visit) => visit.photos.length > 0).length;
+  const totalRevenue = visitHistory.reduce((total, visit) => total + (visit.price ?? 0), 0);
+  const outstandingBalance = invoiceRows.reduce((total, invoice) => total + (invoice.balance_due ?? 0), 0);
+  const paidTotal = paymentRows
+    .filter((payment) => payment.status === "captured")
+    .reduce((total, payment) => total + (payment.amount ?? 0), 0);
   const averageActualDuration =
     completed.length > 0
       ? Math.round(completed.reduce((total, visit) => total + (visit.actual_duration_min ?? 0), 0) / completed.length)
@@ -195,6 +211,7 @@ export function getClientDetailSnapshot(db, clientId) {
     completed.length > 0
       ? Math.round(completed.reduce((total, visit) => total + (visit.delta_min ?? 0), 0) / completed.length)
       : null;
+  const geocodeReady = client.latitude != null && client.longitude != null;
 
   const nextVisit = visitHistory
     .filter((visit) => visit.status === "scheduled" || visit.status === "in_progress")
@@ -209,6 +226,7 @@ export function getClientDetailSnapshot(db, clientId) {
 
   return {
     client,
+    crmProfile,
     notes,
     recurringServices,
     visitHistory,
@@ -221,7 +239,11 @@ export function getClientDetailSnapshot(db, clientId) {
       averageDeltaMin,
       overrunVisits,
       onTimeRate: completed.length ? Number((onTimeCompleted / completed.length).toFixed(2)) : 0,
-      proofCoverageRate: visitHistory.length ? Number((proofVisits / visitHistory.length).toFixed(2)) : 0
+      proofCoverageRate: visitHistory.length ? Number((proofVisits / visitHistory.length).toFixed(2)) : 0,
+      geocodeReady,
+      totalRevenue,
+      outstandingBalance,
+      paidTotal
     }
   };
 }
@@ -243,18 +265,49 @@ export function createClientRecord(db, payload) {
 
   mutable.clients.push({
     id: nextId,
+    organization_id: appEnv.organizationId,
     full_name: normalized.full_name,
     phone: normalized.phone,
     email: normalized.email || "",
     suburb: normalized.suburb,
     address: normalized.address,
+    latitude: null,
+    longitude: null,
+    geo_source: "none",
+    geocode_status: "pending",
     service_type_id: normalized.service_type_id,
     cleaning_frequency: normalized.cleaning_frequency,
     estimated_duration_min: normalized.estimated_duration_min,
+    acquisition_source: normalized.acquisition_source,
+    referral_source: normalized.referral_source || "",
     notes_summary: normalized.notes_summary || "",
     special_instructions: normalized.special_instructions || "",
     status: "active",
     last_cleaning_at: null,
+    created_at: nowIso,
+    updated_at: nowIso
+  });
+
+  if (!mutable.crmProfiles) {
+    mutable.crmProfiles = [];
+  }
+
+  mutable.crmProfiles.push({
+    id: buildNextId(mutable.crmProfiles, "crm-"),
+    organization_id: appEnv.organizationId,
+    client_id: nextId,
+    lifecycle_stage: "new",
+    lead_status: "customer",
+    acquisition_source: normalized.acquisition_source,
+    acquisition_channel: normalized.acquisition_source === "referral" ? "customer_referral" : normalized.acquisition_source,
+    referral_source: normalized.referral_source || "",
+    churn_risk: "medium",
+    vip_level: "none",
+    win_back_eligible: false,
+    reactivation_candidate: false,
+    upsell_signal: "medium",
+    deep_clean_interest: "medium",
+    notes: "",
     created_at: nowIso,
     updated_at: nowIso
   });
@@ -293,6 +346,16 @@ export function updateClientRecord(db, clientId, payload) {
     ...normalized,
     updated_at: new Date().toISOString()
   };
+
+  const crmIndex = (mutable.crmProfiles ?? []).findIndex((item) => item.client_id === clientId);
+  if (crmIndex >= 0) {
+    mutable.crmProfiles[crmIndex] = {
+      ...mutable.crmProfiles[crmIndex],
+      acquisition_source: normalized.acquisition_source,
+      referral_source: normalized.referral_source || mutable.crmProfiles[crmIndex].referral_source,
+      updated_at: new Date().toISOString()
+    };
+  }
 
   return {
     db: mutable,
@@ -333,6 +396,19 @@ export function deleteClientRecord(db, clientId) {
   mutable.clientNotes = mutable.clientNotes.filter((note) => note.client_id !== clientId);
   mutable.recurringServices = mutable.recurringServices.filter((service) => service.client_id !== clientId);
   mutable.reminders = mutable.reminders.filter((reminder) => reminder.client_id !== clientId);
+  mutable.crmProfiles = (mutable.crmProfiles ?? []).filter((profile) => profile.client_id !== clientId);
+  mutable.clientSubscriptions = (mutable.clientSubscriptions ?? []).filter((item) => item.client_id !== clientId);
+  const removedPaymentIds = (mutable.payments ?? [])
+    .filter((item) => item.client_id === clientId)
+    .map((item) => item.id);
+  mutable.payments = (mutable.payments ?? []).filter((item) => item.client_id !== clientId);
+  mutable.paymentEvents = (mutable.paymentEvents ?? []).filter(
+    (event) => !removedPaymentIds.includes(event.payment_id)
+  );
+  mutable.referrals = (mutable.referrals ?? []).filter(
+    (item) => item.referrer_client_id !== clientId && item.referred_client_id !== clientId
+  );
+  mutable.portalAccounts = (mutable.portalAccounts ?? []).filter((item) => item.client_id !== clientId);
 
   return {
     db: mutable,

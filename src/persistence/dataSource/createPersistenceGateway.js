@@ -64,16 +64,25 @@ export function createPersistenceGateway() {
           return {
             ok: false,
             error: remoteResult.error,
-            fallback: localResult.ok ? "local-only" : "none"
+            fallback: localResult.ok ? "local-only" : "none",
+            stats: remoteResult.stats ?? null
           };
         }
+
+        return {
+          ok: localResult.ok,
+          error: localResult.error ?? null,
+          reconciledDb: remoteResult.reconciledDb ?? null,
+          stats: remoteResult.stats ?? null
+        };
       }
 
       return {
         ok: localResult.ok,
-        error: localResult.error ?? null
+        error: localResult.error ?? null,
+        reconciledDb: null,
+        stats: null
       };
     }
   };
 }
-

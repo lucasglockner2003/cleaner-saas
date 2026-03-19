@@ -8,6 +8,18 @@ function visitTone(status) {
   return "muted";
 }
 
+function riskTone(level) {
+  if (level === "high") return "danger";
+  if (level === "medium") return "warning";
+  return "success";
+}
+
+function loadTone(signal) {
+  if (signal === "overloaded") return "danger";
+  if (signal === "underutilized") return "warning";
+  return "neutral";
+}
+
 function getEstimatedWindow(day, visitId) {
   const matched = day.estimation?.windows?.find((window) => window.type === "visit" && window.visitId === visitId);
 
@@ -28,6 +40,8 @@ export function ScheduleDayColumn({
   onMove,
   onAssignTeam,
   onAssignEmployee,
+  onApplySuggestedOrder,
+  applySuggestedPending,
   canManageDispatch
 }) {
   if (!day?.date) {
@@ -68,6 +82,78 @@ export function ScheduleDayColumn({
           <span>Late starts</span>
           <strong>{day.daySummary.lateStarts}</strong>
         </p>
+        <p>
+          <span>Travel</span>
+          <strong>{day.daySummary.routeTravelMin} min</strong>
+        </p>
+        <p>
+          <span>Potential save</span>
+          <strong>{day.daySummary.routeTravelMinSaved} min</strong>
+        </p>
+      </div>
+
+      {day.routePlan ? (
+        <div className="route-insight-box">
+          <div className="history-row">
+            <div>
+              <strong>Route optimization</strong>
+              <p className="muted">
+                {day.routePlan.strategy} | {day.routePlan.mapProvider.mode}
+              </p>
+            </div>
+            <Badge value={day.intelligence?.routeEfficiency?.label || "No signal"} tone={day.intelligence?.routeEfficiency?.level || "neutral"} />
+          </div>
+
+          <div className="visit-metrics-inline">
+            <span>{day.routePlan.recommended.estimatedDistanceKm.toFixed(1)} km</span>
+            <span>{day.routePlan.recommended.estimatedTravelMin} travel min</span>
+            <span>{Math.round(day.routePlan.recommended.coordinateCoverage.coveragePct * 100)}% geocode ready</span>
+          </div>
+
+          {canManageDispatch && day.routePlan.recommendationChanged ? (
+            <button
+              className="btn btn-ghost"
+              disabled={applySuggestedPending}
+              onClick={() => onApplySuggestedOrder(day.id)}
+            >
+              {applySuggestedPending ? "Applying..." : "Apply recommended order"}
+            </button>
+          ) : (
+            <p className="muted">
+              {day.routePlan.recommendationChanged
+                ? "Dispatch permissions required to apply route recommendation."
+                : "Current order is already close to recommended route."}
+            </p>
+          )}
+
+          <div className="route-preview-list">
+            {day.routePlan.recommended.orderedStops.slice(0, 5).map((stop) => (
+              <article key={stop.visit_id} className="row-item">
+                <div>
+                  <strong>
+                    #{stop.recommended_order} {stop.client_name}
+                  </strong>
+                  <p className="muted">
+                    {stop.suburb} | current #{stop.current_order}
+                  </p>
+                </div>
+                <Badge value={stop.point_quality} tone={stop.point_quality === "exact" ? "success" : stop.point_quality === "estimated" ? "warning" : "danger"} />
+              </article>
+            ))}
+          </div>
+        </div>
+      ) : null}
+
+      <div className="visit-metrics-inline">
+        <span>
+          <Badge value={`Overbook ${day.daySummary.overbookRisk}`} tone={riskTone(day.daySummary.overbookRisk)} />
+        </span>
+        <span>
+          <Badge value={`Lateness ${day.daySummary.latenessRiskLevel}`} tone={riskTone(day.daySummary.latenessRiskLevel)} />
+        </span>
+        <span>
+          <Badge value={`Load ${day.loadSignal?.signal || "balanced"}`} tone={loadTone(day.loadSignal?.signal)} />
+        </span>
       </div>
 
       <div className="stack-list">
@@ -177,6 +263,13 @@ export function ScheduleDayColumn({
         <p>
           <span>Utilization:</span>{" "}
           <strong>{day.estimation ? `${Math.round(day.estimation.utilizationRate * 100)}%` : "-"}</strong>
+        </p>
+        <p>
+          <span>Route distance:</span> <strong>{day.daySummary.routeDistanceKm.toFixed(1)} km</strong>
+        </p>
+        <p>
+          <span>Recurring influence:</span>{" "}
+          <strong>{Math.round((day.daySummary.recurringInfluenceRate ?? 0) * 100)}%</strong>
         </p>
       </footer>
     </section>

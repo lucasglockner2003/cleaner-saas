@@ -80,6 +80,30 @@ export function ClientFormFields({ form, errors, serviceTypes, onChange }) {
         <FieldError message={errors.estimated_duration_min} />
       </label>
 
+      <label>
+        Acquisition source
+        <select value={form.acquisition_source} onChange={(event) => updateField("acquisition_source", event.target.value)}>
+          <option value="google">Google</option>
+          <option value="facebook">Facebook</option>
+          <option value="website">Website</option>
+          <option value="referral">Referral</option>
+          <option value="phone">Phone</option>
+          <option value="portal">Portal</option>
+          <option value="manual">Manual / Other</option>
+        </select>
+        <FieldError message={errors.acquisition_source} />
+      </label>
+
+      <label>
+        Referral source
+        <input
+          value={form.referral_source}
+          onChange={(event) => updateField("referral_source", event.target.value)}
+          placeholder="Client or partner name"
+        />
+        <FieldError message={errors.referral_source} />
+      </label>
+
       <label className="span-2">
         Notes summary
         <input
@@ -104,4 +128,3 @@ export function ClientFormFields({ form, errors, serviceTypes, onChange }) {
     </>
   );
 }
-

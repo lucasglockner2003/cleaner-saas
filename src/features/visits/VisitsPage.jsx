@@ -192,6 +192,7 @@ export function VisitsPage() {
           <DataTable
             columns={columns}
             rows={visits}
+            windowSize={40}
             empty={<EmptyState title="No visits for this filter" message="Adjust filters to view visit records." />}
           />
         </Card>

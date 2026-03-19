@@ -10,7 +10,9 @@ export async function persistWithRetry(saveFn, db, persistPlan, maxAttempts = 2)
     if (result?.ok) {
       return {
         ok: true,
-        attempts: attempt + 1
+        attempts: attempt + 1,
+        reconciledDb: result.reconciledDb ?? null,
+        stats: result.stats ?? null
       };
     }
 
@@ -20,7 +22,8 @@ export async function persistWithRetry(saveFn, db, persistPlan, maxAttempts = 2)
   return {
     ok: false,
     attempts: attempt,
-    error: lastResult?.error ?? "Persistence failed after retries."
+    error: lastResult?.error ?? "Persistence failed after retries.",
+    reconciledDb: null,
+    stats: lastResult?.stats ?? null
   };
 }
-

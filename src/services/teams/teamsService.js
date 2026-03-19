@@ -1,5 +1,6 @@
 import { cloneDatabase, findById } from "../helpers";
 import { buildDayEstimation } from "../../utils/scheduleEstimator";
+import { buildRoutePlan } from "../routes/routeOptimizationService";
 
 export function listTeamsWithWorkload(db) {
   return db.teams.map((team) => {
@@ -17,6 +18,41 @@ export function listTeamsWithWorkload(db) {
       (total, visit) => total + (visit.estimated_duration_min ?? 0),
       0
     );
+    const scheduleDays = db.scheduleDays.filter((day) => day.team_id === team.id);
+    const routeSnapshots = scheduleDays
+      .map((scheduleDay) => {
+        const visits = db.scheduledVisits
+          .filter((visit) => visit.schedule_day_id === scheduleDay.id)
+          .sort((a, b) => a.order_index - b.order_index);
+        if (!visits.length) {
+          return null;
+        }
+        return buildRoutePlan({
+          db,
+          scheduleDay,
+          visits
+        });
+      })
+      .filter(Boolean);
+
+    const routeDistanceKm = routeSnapshots.reduce(
+      (total, routePlan) => total + (routePlan.current.estimatedDistanceKm ?? 0),
+      0
+    );
+    const routeTravelMin = routeSnapshots.reduce(
+      (total, routePlan) => total + (routePlan.current.estimatedTravelMin ?? 0),
+      0
+    );
+    const routeTravelMinSaved = routeSnapshots.reduce(
+      (total, routePlan) => total + Math.max(0, routePlan.delta.travelMinSaved ?? 0),
+      0
+    );
+    const geocodeCoveragePct = routeSnapshots.length
+      ? routeSnapshots.reduce(
+          (total, routePlan) => total + (routePlan.recommended.coordinateCoverage.coveragePct ?? 0),
+          0
+        ) / routeSnapshots.length
+      : 0;
     const workloadHours = Number((totalEstimatedMin / 60).toFixed(1));
     const completedVisitRecords = assignedVisits.filter((visit) => visit.status === "completed");
     const totalRevenue = completedVisitRecords.reduce((total, visit) => total + (visit.price ?? 0), 0);
@@ -37,10 +73,15 @@ export function listTeamsWithWorkload(db) {
         totalRevenue,
         overrunRate: completedVisitRecords.length
           ? Number((overrunCount / completedVisitRecords.length).toFixed(2))
-          : 0
+          : 0,
+        routeDistanceKm: Number(routeDistanceKm.toFixed(1)),
+        routeTravelMin,
+        routeTravelMinSaved,
+        geocodeCoveragePct: Number(geocodeCoveragePct.toFixed(2))
       },
-      route_placeholder: "Route optimization module planned",
-      performance_placeholder: "Advanced team efficiency scoring planned"
+      route_placeholder:
+        routeSnapshots.length > 0 ? "Heuristic route optimization active" : "No route data available",
+      performance_placeholder: "Team performance scoring can now use route + load signals"
     };
   });
 }

@@ -1,4 +1,9 @@
-import { assignVisitEmployee, moveVisitOrder, reassignVisitTeam } from "../../services/schedule/scheduleService";
+import {
+  applySuggestedRouteOrder,
+  assignVisitEmployee,
+  moveVisitOrder,
+  reassignVisitTeam
+} from "../../services/schedule/scheduleService";
 import { withPersistPlan } from "./repositoryResult";
 
 export function createScheduleRepository() {
@@ -13,7 +18,10 @@ export function createScheduleRepository() {
 
     assignVisitEmployee(db, visitId, employeeId) {
       return withPersistPlan(assignVisitEmployee(db, visitId, employeeId), ["scheduledVisits"]);
+    },
+
+    applySuggestedOrder(db, scheduleDayId) {
+      return withPersistPlan(applySuggestedRouteOrder(db, scheduleDayId), ["scheduledVisits", "scheduleDays"]);
     }
   };
 }
-

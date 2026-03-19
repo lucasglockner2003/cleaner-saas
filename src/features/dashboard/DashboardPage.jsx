@@ -7,14 +7,18 @@ import {
   bookingsService,
   communicationJobsService,
   completionService,
+  crmService,
   employeesService,
   financeService,
+  growthService,
   invoicesService,
+  paymentsService,
   photoStorageService,
   productsService,
   recurringScheduleService,
   remindersService,
   scheduleService,
+  subscriptionsService,
   visitsService
 } from "../../services";
 import { resolveOperationalDate, resolveOperationalMonth } from "../../utils/operationsDate";
@@ -34,8 +38,14 @@ export function DashboardPage() {
   const dailyFinance = financeService.getDailyFinanceSummary(db, operatingDate);
   const monthlyFinance = financeService.getMonthlyFinanceSummary(db, month);
   const financeInsights = financeService.getOperationalFinanceInsights(db, month);
+  const areaInsights = financeService.getAreaProfitabilityInsights(db, month);
+  const paymentsSummary = paymentsService.getPaymentsSummary(db, { month });
+  const subscriptionSummary = subscriptionsService.getSubscriptionRevenueSummary(db);
+  const lifecycleSummary = crmService.getLifecycleSummary(db);
+  const growthSummary = growthService.getGrowthSummary(db);
   const trend = financeService.getMonthlyTrend(db, month);
   const scheduleStats = scheduleService.getScheduleQuickStats(db);
+  const scheduleOptimization = scheduleService.getWeeklyOptimizationSignals(db);
   const employeeStats = employeesService.getEmployeesQuickStats(db);
   const productInsights = productsService.getInventoryInsights(db);
   const reminderStats = remindersService.getReminderStats(db);
@@ -64,7 +74,18 @@ export function DashboardPage() {
         <StatCard label="Monthly Revenue" value={`$${monthlyFinance.revenue.toFixed(2)}`} hint={`${month}`} />
         <StatCard label="Houses Completed" value={monthlyFinance.completedHouses} hint="Month to date" />
         <StatCard label="Avg Time Per House" value={`${averageTimePerHouse} min`} hint="Completed visits" />
-        <StatCard label="Estimated Profit" value={`$${monthlyFinance.profit.toFixed(2)}`} hint="Revenue - costs" />
+        <StatCard
+          label="Estimated Profit"
+          value={`$${monthlyFinance.adjustedProfit.toFixed(2)}`}
+          hint="Revenue - costs - travel estimate"
+        />
+      </section>
+
+      <section className="stat-grid">
+        <StatCard label="MRR" value={`$${subscriptionSummary.mrr.toFixed(2)}`} hint={`${subscriptionSummary.activeSubscriptions} active subscriptions`} />
+        <StatCard label="Collection Rate" value={`${paymentsSummary.collectionRate}%`} hint="Invoices converted to paid" />
+        <StatCard label="At-Risk Clients" value={lifecycleSummary.atRiskClients} hint="CRM retention signal" />
+        <StatCard label="Referral Conversions" value={growthSummary.referrals.converted} hint="Growth pipeline performance" />
       </section>
 
       <section className="split-grid">
@@ -86,6 +107,18 @@ export function DashboardPage() {
               <strong>{productInsights.totals.low + productInsights.totals.out}</strong>
               <span>Inventory risk items</span>
             </div>
+            <div>
+              <strong>{scheduleOptimization.overloadedTeams}</strong>
+              <span>Overloaded team-days</span>
+            </div>
+            <div>
+              <strong>{scheduleOptimization.underutilizedTeams}</strong>
+              <span>Underutilized team-days</span>
+            </div>
+            <div>
+              <strong>{Math.round(scheduleOptimization.averageGeocodeCoveragePct * 100)}%</strong>
+              <span>Geocode readiness</span>
+            </div>
           </div>
         </Card>
 
@@ -100,13 +133,113 @@ export function DashboardPage() {
               <span>Costs</span>
             </div>
             <div>
-              <strong>${dailyFinance.profit.toFixed(2)}</strong>
-              <span>Profit</span>
+              <strong>${dailyFinance.adjustedProfit.toFixed(2)}</strong>
+              <span>Adjusted profit</span>
             </div>
             <div>
               <strong>{dailyFinance.completedHouses}</strong>
               <span>Completed houses</span>
             </div>
+            <div>
+              <strong>${dailyFinance.estimatedTravelCost.toFixed(2)}</strong>
+              <span>Estimated travel cost</span>
+            </div>
+          </div>
+        </Card>
+      </section>
+
+      <section className="split-grid">
+        <Card title="Monetization and billing">
+          <div className="detail-list">
+            <p>
+              <span>Captured payments</span>
+              <strong>${paymentsSummary.capturedAmount.toFixed(2)}</strong>
+            </p>
+            <p>
+              <span>Pending payments</span>
+              <strong>${paymentsSummary.pendingAmount.toFixed(2)}</strong>
+            </p>
+            <p>
+              <span>Outstanding balance</span>
+              <strong>${paymentsSummary.balanceDue.toFixed(2)}</strong>
+            </p>
+            <p>
+              <span>ARR projection</span>
+              <strong>${subscriptionSummary.arr.toFixed(2)}</strong>
+            </p>
+          </div>
+        </Card>
+
+        <Card title="Lifecycle and growth">
+          <div className="detail-list">
+            <p>
+              <span>Leads</span>
+              <strong>{lifecycleSummary.leads}</strong>
+            </p>
+            <p>
+              <span>Reactivation targets</span>
+              <strong>{lifecycleSummary.reactivationTargets}</strong>
+            </p>
+            <p>
+              <span>Active campaigns</span>
+              <strong>{growthSummary.campaigns.active}</strong>
+            </p>
+            <p>
+              <span>Campaign conversion rate</span>
+              <strong>{growthSummary.campaigns.conversionRate}%</strong>
+            </p>
+          </div>
+        </Card>
+      </section>
+
+      <section className="split-grid">
+        <Card title="Route optimization and dispatch load">
+          <div className="detail-list">
+            <p>
+              <span>Route distance (week)</span>
+              <strong>{scheduleOptimization.routeDistanceKm.toFixed(1)} km</strong>
+            </p>
+            <p>
+              <span>Travel time (week)</span>
+              <strong>{scheduleOptimization.routeTravelMin} min</strong>
+            </p>
+            <p>
+              <span>Potential travel savings</span>
+              <strong>{scheduleOptimization.potentialTravelMinSaved} min</strong>
+            </p>
+            <p>
+              <span>Potential km savings</span>
+              <strong>{scheduleOptimization.potentialDistanceKmSaved.toFixed(1)} km</strong>
+            </p>
+            <p>
+              <span>Top optimization day</span>
+              <strong>
+                {scheduleOptimization.topOpportunity
+                  ? `${scheduleOptimization.topOpportunity.day_name} ${scheduleOptimization.topOpportunity.team_name}`
+                  : "-"}
+              </strong>
+            </p>
+          </div>
+        </Card>
+
+        <Card title="Geographic profitability signals">
+          <div className="detail-list">
+            <p>
+              <span>Area revenue total</span>
+              <strong>${areaInsights.summary.totalRevenue.toFixed(2)}</strong>
+            </p>
+            <p>
+              <span>Area profit total</span>
+              <strong>${areaInsights.summary.totalProfit.toFixed(2)}</strong>
+            </p>
+            <p>
+              <span>Travel cost by area</span>
+              <strong>${areaInsights.summary.totalTravelCost.toFixed(2)}</strong>
+            </p>
+            <p>
+              <span>At-risk suburbs</span>
+              <strong>{areaInsights.rows.filter((row) => row.signal === "at_risk").length}</strong>
+            </p>
           </div>
         </Card>
       </section>
@@ -122,8 +255,11 @@ export function DashboardPage() {
                       {day.day_name} - {day.team_name}
                     </strong>
                     <p className="muted">
-                      {day.daySummary?.completed ?? 0}/{day.daySummary?.total ?? 0} completed | Overruns{" "}
-                      {day.daySummary?.overrunCount ?? 0}
+                      {day.daySummary?.completed ?? 0}/{day.daySummary?.total ?? 0} completed | Overruns {day.daySummary?.overrunCount ?? 0}
+                    </p>
+                    <p className="muted">
+                      Route {(day.daySummary?.routeDistanceKm ?? 0).toFixed(1)} km | Save {day.daySummary?.routeTravelMinSaved ?? 0}m | Load{" "}
+                      {day.loadSignal?.signal ?? "balanced"}
                     </p>
                   </div>
                   <Badge value={day.estimation?.projectedEnd ?? "-"} tone="neutral" />
@@ -289,7 +425,7 @@ export function DashboardPage() {
             <ul className="simple-list">
               {financeInsights.bySuburb.slice(0, 4).map((suburb) => (
                 <li key={suburb.suburb}>
-                  <strong>{suburb.suburb}</strong> - ${suburb.revenue.toFixed(2)} ({suburb.visits} visits)
+                  <strong>{suburb.suburb}</strong> - ${suburb.revenue.toFixed(2)} revenue | ${suburb.profit.toFixed(2)} profit
                 </li>
               ))}
             </ul>

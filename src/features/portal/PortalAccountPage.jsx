@@ -52,6 +52,23 @@ export function PortalAccountPage() {
             <strong>{snapshot.profile.cleaning_frequency}</strong>
           </p>
           <p>
+            <span>Membership plan</span>
+            <strong>{snapshot.subscription.active?.plan_name || "No active plan"}</strong>
+          </p>
+          <p>
+            <span>Membership status</span>
+            <strong>
+              <Badge
+                value={snapshot.subscription.active?.status || "none"}
+                tone={snapshot.subscription.active?.status === "active" ? "success" : snapshot.subscription.active ? "warning" : "neutral"}
+              />
+            </strong>
+          </p>
+          <p>
+            <span>Next billing date</span>
+            <strong>{snapshot.subscription.active?.next_billing_date || "-"}</strong>
+          </p>
+          <p>
             <span>Last portal login</span>
             <strong>{formatDateTime(snapshot.account.last_login_at)}</strong>
           </p>

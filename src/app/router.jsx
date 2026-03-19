@@ -1,38 +1,70 @@
+import { lazy, Suspense } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
-import { DashboardPage } from "../features/dashboard/DashboardPage";
-import { ClientsPage } from "../features/clients/ClientsPage";
-import { ClientDetailsPage } from "../features/clients/ClientDetailsPage";
-import { SchedulePage } from "../features/schedule/SchedulePage";
-import { TeamsPage } from "../features/teams/TeamsPage";
-import { EmployeesPage } from "../features/employees/EmployeesPage";
-import { FinancePage } from "../features/finance/FinancePage";
-import { ProductsPage } from "../features/products/ProductsPage";
-import { VisitsPage } from "../features/visits/VisitsPage";
-import { SettingsPage } from "../features/settings/SettingsPage";
-import { CommunicationsPage } from "../features/communications/CommunicationsPage";
-import { BookingsPage } from "../features/bookings/BookingsPage";
-import { RecurringPage } from "../features/recurring/RecurringPage";
-import { LoginPage } from "../features/auth/LoginPage";
-import { PortalLoginPage } from "../features/portal/PortalLoginPage";
-import { PortalHomePage } from "../features/portal/PortalHomePage";
-import { PortalHistoryPage } from "../features/portal/PortalHistoryPage";
-import { PortalInvoicesPage } from "../features/portal/PortalInvoicesPage";
-import { PortalBookingPage } from "../features/portal/PortalBookingPage";
-import { PortalRecurringPage } from "../features/portal/PortalRecurringPage";
-import { PortalAccountPage } from "../features/portal/PortalAccountPage";
 import { ProtectedRoute } from "./guards/ProtectedRoute";
 import { ROLES } from "../auth/roles";
+
+const DashboardPage = lazy(() => import("../features/dashboard/DashboardPage").then((m) => ({ default: m.DashboardPage })));
+const ClientsPage = lazy(() => import("../features/clients/ClientsPage").then((m) => ({ default: m.ClientsPage })));
+const ClientDetailsPage = lazy(() =>
+  import("../features/clients/ClientDetailsPage").then((m) => ({ default: m.ClientDetailsPage }))
+);
+const SchedulePage = lazy(() => import("../features/schedule/SchedulePage").then((m) => ({ default: m.SchedulePage })));
+const TeamsPage = lazy(() => import("../features/teams/TeamsPage").then((m) => ({ default: m.TeamsPage })));
+const EmployeesPage = lazy(() => import("../features/employees/EmployeesPage").then((m) => ({ default: m.EmployeesPage })));
+const FinancePage = lazy(() => import("../features/finance/FinancePage").then((m) => ({ default: m.FinancePage })));
+const ProductsPage = lazy(() => import("../features/products/ProductsPage").then((m) => ({ default: m.ProductsPage })));
+const VisitsPage = lazy(() => import("../features/visits/VisitsPage").then((m) => ({ default: m.VisitsPage })));
+const MonetizationPage = lazy(() =>
+  import("../features/monetization/MonetizationPage").then((m) => ({ default: m.MonetizationPage }))
+);
+const CrmPage = lazy(() => import("../features/crm/CrmPage").then((m) => ({ default: m.CrmPage })));
+const SettingsPage = lazy(() => import("../features/settings/SettingsPage").then((m) => ({ default: m.SettingsPage })));
+const CommunicationsPage = lazy(() =>
+  import("../features/communications/CommunicationsPage").then((m) => ({ default: m.CommunicationsPage }))
+);
+const BookingsPage = lazy(() => import("../features/bookings/BookingsPage").then((m) => ({ default: m.BookingsPage })));
+const RecurringPage = lazy(() => import("../features/recurring/RecurringPage").then((m) => ({ default: m.RecurringPage })));
+const LoginPage = lazy(() => import("../features/auth/LoginPage").then((m) => ({ default: m.LoginPage })));
+const PortalLoginPage = lazy(() => import("../features/portal/PortalLoginPage").then((m) => ({ default: m.PortalLoginPage })));
+const PortalHomePage = lazy(() => import("../features/portal/PortalHomePage").then((m) => ({ default: m.PortalHomePage })));
+const PortalHistoryPage = lazy(() =>
+  import("../features/portal/PortalHistoryPage").then((m) => ({ default: m.PortalHistoryPage }))
+);
+const PortalInvoicesPage = lazy(() =>
+  import("../features/portal/PortalInvoicesPage").then((m) => ({ default: m.PortalInvoicesPage }))
+);
+const PortalBookingPage = lazy(() =>
+  import("../features/portal/PortalBookingPage").then((m) => ({ default: m.PortalBookingPage }))
+);
+const PortalRecurringPage = lazy(() =>
+  import("../features/portal/PortalRecurringPage").then((m) => ({ default: m.PortalRecurringPage }))
+);
+const PortalAccountPage = lazy(() =>
+  import("../features/portal/PortalAccountPage").then((m) => ({ default: m.PortalAccountPage }))
+);
+
+function RouteFallback() {
+  return (
+    <div className="loading-screen">
+      <p>Loading module...</p>
+    </div>
+  );
+}
+
+function withLazyBoundary(element) {
+  return <Suspense fallback={<RouteFallback />}>{element}</Suspense>;
+}
 
 export function AppRouter() {
   return (
     <Routes>
-      <Route path="/login" element={<LoginPage />} />
-      <Route path="/portal/login" element={<PortalLoginPage />} />
+      <Route path="/login" element={withLazyBoundary(<LoginPage />)} />
+      <Route path="/portal/login" element={withLazyBoundary(<PortalLoginPage />)} />
       <Route
         path="/"
         element={
           <ProtectedRoute allowedUserTypes={["internal"]}>
-            <DashboardPage />
+            {withLazyBoundary(<DashboardPage />)}
           </ProtectedRoute>
         }
       />
@@ -40,7 +72,7 @@ export function AppRouter() {
         path="/clients"
         element={
           <ProtectedRoute allowedRoles={[ROLES.OWNER, ROLES.OPS]} allowedUserTypes={["internal"]}>
-            <ClientsPage />
+            {withLazyBoundary(<ClientsPage />)}
           </ProtectedRoute>
         }
       />
@@ -48,7 +80,7 @@ export function AppRouter() {
         path="/clients/:clientId"
         element={
           <ProtectedRoute allowedRoles={[ROLES.OWNER, ROLES.OPS]} allowedUserTypes={["internal"]}>
-            <ClientDetailsPage />
+            {withLazyBoundary(<ClientDetailsPage />)}
           </ProtectedRoute>
         }
       />
@@ -56,7 +88,7 @@ export function AppRouter() {
         path="/schedule"
         element={
           <ProtectedRoute allowedUserTypes={["internal"]}>
-            <SchedulePage />
+            {withLazyBoundary(<SchedulePage />)}
           </ProtectedRoute>
         }
       />
@@ -64,7 +96,7 @@ export function AppRouter() {
         path="/teams"
         element={
           <ProtectedRoute allowedRoles={[ROLES.OWNER, ROLES.OPS]} allowedUserTypes={["internal"]}>
-            <TeamsPage />
+            {withLazyBoundary(<TeamsPage />)}
           </ProtectedRoute>
         }
       />
@@ -72,7 +104,7 @@ export function AppRouter() {
         path="/employees"
         element={
           <ProtectedRoute allowedRoles={[ROLES.OWNER, ROLES.OPS]} allowedUserTypes={["internal"]}>
-            <EmployeesPage />
+            {withLazyBoundary(<EmployeesPage />)}
           </ProtectedRoute>
         }
       />
@@ -80,7 +112,7 @@ export function AppRouter() {
         path="/finance"
         element={
           <ProtectedRoute allowedRoles={[ROLES.OWNER, ROLES.OPS]} allowedUserTypes={["internal"]}>
-            <FinancePage />
+            {withLazyBoundary(<FinancePage />)}
           </ProtectedRoute>
         }
       />
@@ -88,7 +120,7 @@ export function AppRouter() {
         path="/products"
         element={
           <ProtectedRoute allowedRoles={[ROLES.OWNER, ROLES.OPS]} allowedUserTypes={["internal"]}>
-            <ProductsPage />
+            {withLazyBoundary(<ProductsPage />)}
           </ProtectedRoute>
         }
       />
@@ -96,7 +128,23 @@ export function AppRouter() {
         path="/visits"
         element={
           <ProtectedRoute allowedUserTypes={["internal"]}>
-            <VisitsPage />
+            {withLazyBoundary(<VisitsPage />)}
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/monetization"
+        element={
+          <ProtectedRoute allowedRoles={[ROLES.OWNER, ROLES.OPS]} allowedUserTypes={["internal"]}>
+            {withLazyBoundary(<MonetizationPage />)}
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/crm"
+        element={
+          <ProtectedRoute allowedRoles={[ROLES.OWNER, ROLES.OPS]} allowedUserTypes={["internal"]}>
+            {withLazyBoundary(<CrmPage />)}
           </ProtectedRoute>
         }
       />
@@ -104,7 +152,7 @@ export function AppRouter() {
         path="/communications"
         element={
           <ProtectedRoute allowedRoles={[ROLES.OWNER, ROLES.OPS]} allowedUserTypes={["internal"]}>
-            <CommunicationsPage />
+            {withLazyBoundary(<CommunicationsPage />)}
           </ProtectedRoute>
         }
       />
@@ -112,7 +160,7 @@ export function AppRouter() {
         path="/bookings"
         element={
           <ProtectedRoute allowedRoles={[ROLES.OWNER, ROLES.OPS]} allowedUserTypes={["internal"]}>
-            <BookingsPage />
+            {withLazyBoundary(<BookingsPage />)}
           </ProtectedRoute>
         }
       />
@@ -120,7 +168,7 @@ export function AppRouter() {
         path="/recurring"
         element={
           <ProtectedRoute allowedRoles={[ROLES.OWNER, ROLES.OPS]} allowedUserTypes={["internal"]}>
-            <RecurringPage />
+            {withLazyBoundary(<RecurringPage />)}
           </ProtectedRoute>
         }
       />
@@ -128,7 +176,7 @@ export function AppRouter() {
         path="/settings"
         element={
           <ProtectedRoute allowedRoles={[ROLES.OWNER]} allowedUserTypes={["internal"]}>
-            <SettingsPage />
+            {withLazyBoundary(<SettingsPage />)}
           </ProtectedRoute>
         }
       />
@@ -136,7 +184,7 @@ export function AppRouter() {
         path="/portal"
         element={
           <ProtectedRoute allowedRoles={[ROLES.CUSTOMER]} allowedUserTypes={["customer"]}>
-            <PortalHomePage />
+            {withLazyBoundary(<PortalHomePage />)}
           </ProtectedRoute>
         }
       />
@@ -144,7 +192,7 @@ export function AppRouter() {
         path="/portal/history"
         element={
           <ProtectedRoute allowedRoles={[ROLES.CUSTOMER]} allowedUserTypes={["customer"]}>
-            <PortalHistoryPage />
+            {withLazyBoundary(<PortalHistoryPage />)}
           </ProtectedRoute>
         }
       />
@@ -152,7 +200,7 @@ export function AppRouter() {
         path="/portal/invoices"
         element={
           <ProtectedRoute allowedRoles={[ROLES.CUSTOMER]} allowedUserTypes={["customer"]}>
-            <PortalInvoicesPage />
+            {withLazyBoundary(<PortalInvoicesPage />)}
           </ProtectedRoute>
         }
       />
@@ -160,7 +208,7 @@ export function AppRouter() {
         path="/portal/booking"
         element={
           <ProtectedRoute allowedRoles={[ROLES.CUSTOMER]} allowedUserTypes={["customer"]}>
-            <PortalBookingPage />
+            {withLazyBoundary(<PortalBookingPage />)}
           </ProtectedRoute>
         }
       />
@@ -168,7 +216,7 @@ export function AppRouter() {
         path="/portal/recurring"
         element={
           <ProtectedRoute allowedRoles={[ROLES.CUSTOMER]} allowedUserTypes={["customer"]}>
-            <PortalRecurringPage />
+            {withLazyBoundary(<PortalRecurringPage />)}
           </ProtectedRoute>
         }
       />
@@ -176,7 +224,7 @@ export function AppRouter() {
         path="/portal/account"
         element={
           <ProtectedRoute allowedRoles={[ROLES.CUSTOMER]} allowedUserTypes={["customer"]}>
-            <PortalAccountPage />
+            {withLazyBoundary(<PortalAccountPage />)}
           </ProtectedRoute>
         }
       />

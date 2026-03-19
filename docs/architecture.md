@@ -25,10 +25,10 @@ The architecture keeps these experiences separated while sharing one normalized 
    - reusable UI primitives and shell components
 3. `features/`
    - page modules:
-     - internal: dashboard, clients, schedule, teams, employees, finance, products, visits, bookings, recurring, communications, settings
+     - internal: dashboard, clients, schedule, teams, employees, finance, products, visits, bookings, recurring, communications, monetization, crm, settings
      - customer: portal overview, history, invoices, booking, recurring, account
 4. `services/`
-   - domain logic, communication pipelines, booking/recurrence logic, portal-safe read models
+   - domain logic, communication pipelines, booking/recurrence logic, monetization/CRM/growth logic, portal-safe read models
 5. `persistence/`
    - datasource gateway + repositories
 6. `mocks/`
@@ -67,6 +67,29 @@ The architecture keeps these experiences separated while sharing one normalized 
 
 - `clientsService`, `scheduleService`, `visitsService`, `teamsService`, `employeesService`, `financeService`, `productsService`
 
+### Operational intelligence (Phase 6)
+
+- `routeOptimizationService`
+  - nearest-neighbor route recommendation by team/day
+  - current-vs-recommended travel comparison
+  - route preview payload with markers/polyline readiness
+  - geocode coverage and confidence scoring
+- `mapProviderService`
+  - map provider boundary (`mock` now, webhook/provider-ready mode prepared)
+  - coordinate resolution strategy:
+    - exact record coordinates
+    - suburb/region centroid fallback
+  - leg distance/travel estimation contract reusable across schedule/finance/teams
+- `scheduleService` (expanded)
+  - route-aware day estimation (dynamic travel buffers)
+  - overbook/lateness risk signals
+  - team load-balance signals by day
+  - route recommendation apply mutation
+- `financeService` (expanded)
+  - travel-cost-aware profitability
+  - suburb/area profit signals
+  - monthly/day adjusted profit trends including estimated travel impact
+
 ### Communication workflows
 
 - `remindersService` + reminder pipeline
@@ -74,6 +97,42 @@ The architecture keeps these experiences separated while sharing one normalized 
 - `completionService` + completion pipeline
 - `communicationJobsService`
 - `photoStorageService`
+
+### Monetization and lifecycle workflows (Phase 7)
+
+- `paymentsService`
+  - payment records linked to invoices
+  - payment status lifecycle (pending/captured/failed/refunded/cancelled)
+  - invoice balance synchronization on capture/refund
+  - payment provider adapter boundary (`manual`, `stripe`, `paypal`, `subscription_billing`)
+- `subscriptionsService`
+  - plan catalog and pricing tiers
+  - client subscription assignments
+  - recurring revenue summaries (MRR/ARR)
+  - recurring billing readiness metadata
+- `crmService`
+  - customer lifecycle model (lead/new/active/at-risk/inactive/churned)
+  - churn and reactivation signal derivation
+  - VIP/high-value and lifecycle enrichment controls
+  - automation-ready audience segmentation
+- `growthService`
+  - referral lifecycle records and reward readiness
+  - campaign records and conversion tracking
+  - acquisition/source analytics for growth visibility
+
+### Production hardening systems (Final phase)
+
+- `paymentProviderAdapterService`
+  - Stripe-first provider contract for payment-intent + reconciliation calls
+  - gateway-ready transport boundary with idempotency header support
+- `operationsJobService`
+  - unified background job model for operational async workloads
+  - retry-aware execution lifecycle with pluggable handlers
+- `auditService`
+  - mutation-level audit timeline for reliability and incident tracing
+- `supabaseDataSource` (expanded)
+  - collection-level strategy controls (tenant scope, reconcile, prune)
+  - conflict-aware merge and post-persist state reconciliation
 
 ### Customer-facing workflows (Phase 5)
 
@@ -89,6 +148,11 @@ The architecture keeps these experiences separated while sharing one normalized 
 - `createRepositoryBundle` now includes:
   - bookings repository
   - recurring repository
+  - payments repository
+  - subscriptions repository
+  - crm repository
+  - growth repository
+  - operations repository
   - previous operational and communication repositories
 - App actions execute repository mutations only (no page-level persistence logic)
 - persist plans isolate writes by collection for Supabase-ready module migration
@@ -97,6 +161,8 @@ The architecture keeps these experiences separated while sharing one normalized 
 
 - Email transport adapters: mock + webhook
 - Photo storage adapters: placeholder + webhook
+- Map provider adapter: mock heuristics + webhook/provider-ready boundary
+- Payment adapters: manual capture now + Stripe/PayPal/subscription-billing boundaries
 - Future: real provider implementations can replace adapters without UI refactors
 
 ## SaaS evolution readiness
@@ -107,6 +173,13 @@ The architecture keeps these experiences separated while sharing one normalized 
 - customer-safe data shaping
 - booking and recurring domain models linked to schedule/visit/invoice/proof
 - repository-backed mutation flows for new customer-facing modules
+- route/map intelligence layer decoupled from UI and persistence provider
+- suburb-level profitability model prepared for territory and pricing automation
+- monetization domain linked across invoice/payment/subscription surfaces
+- CRM and growth domain linked across clients/bookings/invoices/communications/referrals
+- background job queue abstraction for async operations
+- audit timeline model and reliability visibility for critical mutations
+- route-level code splitting and chunk strategy suitable for dashboard scale
 
 ### Prepared next
 
@@ -114,3 +187,8 @@ The architecture keeps these experiences separated while sharing one normalized 
 - availability and pricing engines for booking flow
 - workerized recurring/materialization automation
 - tenant-scoped auth/data policies for multi-company mode
+- real map distance/traffic APIs with provider adapters
+- AI-assisted dispatch optimization (reordering + load prediction)
+- hosted payment provider capture and webhook reconciliation
+- lifecycle campaign automation runners and attribution models
+- tenant-scoped RLS enforcement and multi-org policy hardening

@@ -9,6 +9,8 @@ export const NAV_ITEMS = [
   { path: "/finance", label: "Finance", allowedRoles: [ROLES.OWNER, ROLES.OPS] },
   { path: "/products", label: "Products", allowedRoles: [ROLES.OWNER, ROLES.OPS] },
   { path: "/visits", label: "Visits", allowedRoles: [ROLES.OWNER, ROLES.OPS, ROLES.CLEANER] },
+  { path: "/monetization", label: "Monetization", allowedRoles: [ROLES.OWNER, ROLES.OPS] },
+  { path: "/crm", label: "CRM & Growth", allowedRoles: [ROLES.OWNER, ROLES.OPS] },
   { path: "/bookings", label: "Bookings", allowedRoles: [ROLES.OWNER, ROLES.OPS] },
   { path: "/recurring", label: "Recurring", allowedRoles: [ROLES.OWNER, ROLES.OPS] },
   { path: "/communications", label: "Comms", allowedRoles: [ROLES.OWNER, ROLES.OPS] },

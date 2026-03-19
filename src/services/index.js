@@ -12,6 +12,7 @@ export * as communicationJobsService from "./communications/communicationJobsSer
 export * as completionService from "./completion/completionService";
 export * as bookingsService from "./bookings/bookingsService";
 export * as routeOptimizationService from "./routes/routeOptimizationService";
+export * as mapProviderService from "./maps/mapProviderService";
 export * as customerPortalService from "./portal/customerPortalService";
 export * as paymentsService from "./payments/paymentsService";
 export * as ratingsService from "./ratings/ratingsService";
@@ -19,3 +20,8 @@ export * as recurringScheduleService from "./recurring/recurringScheduleService"
 export * as reminderPipelineService from "./pipeline/reminderPipelineService";
 export * as invoicePipelineService from "./pipeline/invoicePipelineService";
 export * as completionPipelineService from "./pipeline/completionPipelineService";
+export * as operationsJobService from "./jobs/operationsJobService";
+export * as auditService from "./audit/auditService";
+export * as subscriptionsService from "./subscriptions/subscriptionsService";
+export * as crmService from "./crm/crmService";
+export * as growthService from "./growth/growthService";

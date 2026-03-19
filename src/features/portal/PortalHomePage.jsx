@@ -29,8 +29,8 @@ export function PortalHomePage() {
       <section className="stat-grid">
         <StatCard label="Upcoming Services" value={snapshot.metrics.upcomingCount} hint="Next scheduled visits" />
         <StatCard label="Completed Services" value={snapshot.metrics.completedCount} hint="Your service history" />
-        <StatCard label="Open Invoices" value={snapshot.metrics.openInvoiceCount} hint="Awaiting payment" />
-        <StatCard label="Visits With Proof" value={snapshot.metrics.proofReadyVisits} hint="Before/after references" />
+        <StatCard label="Outstanding Balance" value={`$${snapshot.metrics.outstandingBalance.toFixed(2)}`} hint="Awaiting payment" />
+        <StatCard label="Active Plan" value={snapshot.metrics.activePlan} hint="Subscription status" />
       </section>
 
       <section className="split-grid">
@@ -116,6 +116,14 @@ export function PortalHomePage() {
             <p>
               <span>Address</span>
               <strong>{snapshot.profile.address}</strong>
+            </p>
+            <p>
+              <span>Total paid</span>
+              <strong>${snapshot.metrics.paidTotal.toFixed(2)}</strong>
+            </p>
+            <p>
+              <span>Visits with proof</span>
+              <strong>{snapshot.metrics.proofReadyVisits}</strong>
             </p>
             <p>
               <span>Last portal login</span>

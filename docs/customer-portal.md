@@ -29,6 +29,8 @@ These routes run inside `PortalShell`, separate from internal `AppShell`.
   - profile/account summary
   - upcoming and past visits
   - invoice list
+  - payment references linked to invoices
+  - active subscription/membership snapshot
   - proof references
   - recurring services and projections
   - booking requests
@@ -47,6 +49,6 @@ These routes run inside `PortalShell`, separate from internal `AppShell`.
 
 ## Future expansion path
 
-- Add portal-side service confirmations and payment actions.
+- Add provider-backed portal-side payment checkout actions.
 - Add customer notifications for booking/recurrence status changes.
 - Add secure proof artifact delivery links.

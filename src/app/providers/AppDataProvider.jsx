@@ -3,12 +3,15 @@ import { createSeedDatabase } from "../../mocks/seed";
 import { createPersistenceGateway } from "../../persistence/dataSource/createPersistenceGateway";
 import { persistWithRetry } from "../../persistence/persistWithRetry";
 import { createRepositoryBundle } from "../../persistence/repositories/createRepositoryBundle";
+import { appendAuditEvent } from "../../services/audit/auditService";
+import { useAuth } from "../../auth/useAuth";
 
 export const AppDataContext = createContext(null);
 
 const repositories = createRepositoryBundle();
 
 export function AppDataProvider({ children }) {
+  const { user } = useAuth();
   const [db, setDb] = useState(() => createSeedDatabase());
   const [isBootstrapping, setIsBootstrapping] = useState(true);
   const [lastFeedback, setLastFeedback] = useState(null);
@@ -20,6 +23,11 @@ export function AppDataProvider({ children }) {
 
   const gatewayRef = useRef(createPersistenceGateway());
   const pendingSyncRef = useRef(null);
+  const dbRef = useRef(db);
+
+  useEffect(() => {
+    dbRef.current = db;
+  }, [db]);
 
   function ensureDatabaseShape(snapshot) {
     const seed = createSeedDatabase();
@@ -94,6 +102,34 @@ export function AppDataProvider({ children }) {
     };
   }
 
+  function appendMutationAudit(actionKey, payload) {
+    const auditResult = appendAuditEvent(payload.db, {
+      action_key: actionKey,
+      outcome: payload.ok ? "success" : "failure",
+      severity: payload.ok ? "info" : "warning",
+      actor_id: user?.id ?? "system",
+      actor_role: user?.role ?? "system",
+      message: payload.message,
+      metadata: {
+        error_keys: Object.keys(payload.errors ?? {}),
+        persistence_mode: gatewayRef.current.mode
+      }
+    });
+
+    const nextCollections = [
+      ...(payload.persistPlan?.collections ?? []),
+      "auditEvents"
+    ];
+
+    return {
+      ...payload,
+      db: auditResult.db,
+      persistPlan: {
+        collections: [...new Set(nextCollections)]
+      }
+    };
+  }
+
   function runMutation(actionKey, mutator, fallbackMessage = "Saved changes.") {
     let payload = {
       ok: true,
@@ -108,8 +144,10 @@ export function AppDataProvider({ children }) {
 
     setDb((current) => {
       const mutationResult = normalizeMutationResult(mutator(current), fallbackMessage);
-      payload = mutationResult;
-      return mutationResult.db;
+      const withAudit = appendMutationAudit(actionKey, mutationResult);
+      payload = withAudit;
+      dbRef.current = withAudit.db;
+      return withAudit.db;
     });
 
     if (!payload.ok) {
@@ -160,6 +198,9 @@ export function AppDataProvider({ children }) {
             status: "healthy",
             error: null
           });
+          if (persistResult.reconciledDb) {
+            setDb(ensureDatabaseShape(persistResult.reconciledDb));
+          }
         }
       })
       .finally(() => {
@@ -170,6 +211,93 @@ export function AppDataProvider({ children }) {
       });
 
     return payload;
+  }
+
+  async function runAsyncMutation(actionKey, mutator, fallbackMessage = "Saved changes.") {
+    setMutationState((current) => ({
+      ...current,
+      [actionKey]: true
+    }));
+
+    try {
+      const currentDb = dbRef.current;
+      const rawResult = await mutator(currentDb);
+      const payload = appendMutationAudit(actionKey, normalizeMutationResult(rawResult, fallbackMessage));
+
+      if (!payload.ok) {
+        setLastFeedback({
+          type: "error",
+          message: payload.message,
+          at: Date.now()
+        });
+        return payload;
+      }
+
+      setDb(payload.db);
+      dbRef.current = payload.db;
+      setLastFeedback({
+        type: "success",
+        message: payload.message,
+        at: Date.now()
+      });
+
+      const persistResult = await persistWithRetry(
+        gatewayRef.current.saveState.bind(gatewayRef.current),
+        payload.db,
+        payload.persistPlan,
+        1
+      );
+
+      if (!persistResult.ok) {
+        pendingSyncRef.current = {
+          db: payload.db,
+          persistPlan: payload.persistPlan
+        };
+        setSyncState({
+          status: "degraded",
+          error: persistResult.error
+        });
+        setLastFeedback({
+          type: "error",
+          message: `Saved locally but remote sync failed: ${persistResult.error}`,
+          at: Date.now()
+        });
+      } else {
+        pendingSyncRef.current = null;
+        setSyncState({
+          status: "healthy",
+          error: null
+        });
+        if (persistResult.reconciledDb) {
+          setDb(ensureDatabaseShape(persistResult.reconciledDb));
+        }
+      }
+
+      return payload;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : "Mutation failed.";
+      const failedResult = {
+        db: dbRef.current,
+        ok: false,
+        message,
+        errors: {
+          root: message
+        }
+      };
+
+      setLastFeedback({
+        type: "error",
+        message,
+        at: Date.now()
+      });
+
+      return failedResult;
+    } finally {
+      setMutationState((current) => ({
+        ...current,
+        [actionKey]: false
+      }));
+    }
   }
 
   const actions = useMemo(
@@ -208,6 +336,13 @@ export function AppDataProvider({ children }) {
       },
       assignVisitEmployee(visitId, employeeId) {
         return runMutation("assignVisitEmployee", (current) => repositories.schedule.assignVisitEmployee(current, visitId, employeeId), "Visit cleaner assignment updated.");
+      },
+      applySuggestedRouteOrder(scheduleDayId) {
+        return runMutation(
+          "applySuggestedRouteOrder",
+          (current) => repositories.schedule.applySuggestedOrder(current, scheduleDayId),
+          "Recommended route order applied."
+        );
       },
       createClient(payload) {
         return runMutation("createClient", (current) => repositories.clients.create(current, payload), "Client registered.");
@@ -287,6 +422,125 @@ export function AppDataProvider({ children }) {
           "retryInvoiceEmailJob",
           (current) => repositories.invoices.retryEmailJob(current, jobId),
           "Invoice email retry scheduled."
+        );
+      },
+      createPayment(payload) {
+        return runMutation(
+          "createPayment",
+          (current) => repositories.payments.create(current, payload),
+          "Payment record saved."
+        );
+      },
+      preparePaymentIntent(payload) {
+        return runAsyncMutation(
+          "preparePaymentIntent",
+          (current) => repositories.payments.prepareIntent(current, payload),
+          "Payment intent prepared."
+        );
+      },
+      setPaymentStatus(paymentId, status, options = {}) {
+        return runMutation(
+          "setPaymentStatus",
+          (current) => repositories.payments.setStatus(current, paymentId, status, options),
+          `Payment marked as ${status}.`
+        );
+      },
+      applyPaymentProviderEvent(payload) {
+        return runMutation(
+          "applyPaymentProviderEvent",
+          (current) => repositories.payments.applyProviderEvent(current, payload),
+          "Payment provider event processed."
+        );
+      },
+      runPaymentReconciliationCycle(options = {}) {
+        return runAsyncMutation(
+          "runPaymentReconciliationCycle",
+          (current) => repositories.payments.reconcile(current, options),
+          "Payment reconciliation cycle completed."
+        );
+      },
+      createSubscriptionPlan(payload) {
+        return runMutation(
+          "createSubscriptionPlan",
+          (current) => repositories.subscriptions.createPlan(current, payload),
+          "Subscription plan created."
+        );
+      },
+      assignClientSubscription(payload) {
+        return runMutation(
+          "assignClientSubscription",
+          (current) => repositories.subscriptions.assignClient(current, payload),
+          "Client subscription assigned."
+        );
+      },
+      setClientSubscriptionStatus(subscriptionId, status) {
+        return runMutation(
+          "setClientSubscriptionStatus",
+          (current) => repositories.subscriptions.setClientStatus(current, subscriptionId, status),
+          `Subscription marked as ${status}.`
+        );
+      },
+      updateClientLifecycle(clientId, payload) {
+        return runMutation(
+          "updateClientLifecycle",
+          (current) => repositories.crm.updateProfile(current, clientId, payload),
+          "CRM lifecycle profile updated."
+        );
+      },
+      refreshLifecycleSignals(options = {}) {
+        return runMutation(
+          "refreshLifecycleSignals",
+          (current) => repositories.crm.refreshSignals(current, options),
+          "Lifecycle signals refreshed."
+        );
+      },
+      createReferral(payload) {
+        return runMutation(
+          "createReferral",
+          (current) => repositories.growth.createReferral(current, payload),
+          "Referral record created."
+        );
+      },
+      setReferralStatus(referralId, status, options = {}) {
+        return runMutation(
+          "setReferralStatus",
+          (current) => repositories.growth.setReferralStatus(current, referralId, status, options),
+          `Referral marked as ${status}.`
+        );
+      },
+      createGrowthCampaign(payload) {
+        return runMutation(
+          "createGrowthCampaign",
+          (current) => repositories.growth.createCampaign(current, payload),
+          "Growth campaign created."
+        );
+      },
+      setGrowthCampaignStatus(campaignId, status) {
+        return runMutation(
+          "setGrowthCampaignStatus",
+          (current) => repositories.growth.setCampaignStatus(current, campaignId, status),
+          `Campaign marked as ${status}.`
+        );
+      },
+      queueOperationJob(payload) {
+        return runMutation(
+          "queueOperationJob",
+          (current) => repositories.operations.queue(current, payload),
+          "Operation job queued."
+        );
+      },
+      runOperationJobCycle(options = {}) {
+        return runAsyncMutation(
+          "runOperationJobCycle",
+          (current) => repositories.operations.runCycle(current, options),
+          "Operation job executor cycle completed."
+        );
+      },
+      retryOperationJob(jobId) {
+        return runMutation(
+          "retryOperationJob",
+          (current) => repositories.operations.retry(current, jobId),
+          "Operation job retry scheduled."
         );
       },
       queueCompletionEmail(visitId, options = {}) {
@@ -418,7 +672,7 @@ export function AppDataProvider({ children }) {
         });
       }
     }),
-    []
+    [user]
   );
 
   const value = useMemo(

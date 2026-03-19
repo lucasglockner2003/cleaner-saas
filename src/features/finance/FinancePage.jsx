@@ -5,12 +5,19 @@ import { DataTable } from "../../components/ui/DataTable";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { Badge } from "../../components/ui/Badge";
 import { useAppData } from "../../hooks/useAppData";
-import { financeService, invoicesService } from "../../services";
+import { financeService, invoicesService, paymentsService } from "../../services";
 import { resolveOperationalDate, resolveOperationalMonth } from "../../utils/operationsDate";
 
 function profitTone(value) {
   if (value > 0) return "success";
   if (value < 0) return "danger";
+  return "muted";
+}
+
+function areaSignalTone(signal) {
+  if (signal === "healthy") return "success";
+  if (signal === "watch") return "warning";
+  if (signal === "at_risk") return "danger";
   return "muted";
 }
 
@@ -31,6 +38,8 @@ export function FinancePage() {
   const dailyRows = useMemo(() => financeService.getDailyVisitFinanceRows(db, selectedDate), [db, selectedDate]);
   const trendRows = useMemo(() => financeService.getMonthlyTrend(db, selectedMonth), [db, selectedMonth]);
   const insights = useMemo(() => financeService.getOperationalFinanceInsights(db, selectedMonth), [db, selectedMonth]);
+  const areaInsights = useMemo(() => financeService.getAreaProfitabilityInsights(db, selectedMonth), [db, selectedMonth]);
+  const paymentSummary = useMemo(() => paymentsService.getPaymentsSummary(db, { month: selectedMonth }), [db, selectedMonth]);
   const monthlyInvoices = useMemo(
     () => invoicesService.listInvoices(db).filter((invoice) => invoice.period_start.startsWith(selectedMonth)),
     [db, selectedMonth]
@@ -56,7 +65,7 @@ export function FinancePage() {
     );
   }, [monthlyInvoices]);
 
-  const marginPct = daily.revenue ? Number(((daily.profit / daily.revenue) * 100).toFixed(1)) : 0;
+  const marginPct = daily.revenue ? Number(((daily.adjustedProfit / daily.revenue) * 100).toFixed(1)) : 0;
 
   const breakdownColumns = [
     { key: "category", label: "Cost Category" },
@@ -82,6 +91,16 @@ export function FinancePage() {
       render: (row) => `$${row.estimatedCost.toFixed(2)}`
     },
     {
+      key: "travelCost",
+      label: "Travel",
+      render: (row) => `$${row.travelCost.toFixed(2)}`
+    },
+    {
+      key: "travelKm",
+      label: "Travel km",
+      render: (row) => row.travelKm.toFixed(1)
+    },
+    {
       key: "profit",
       label: "Profit",
       render: (row) => <Badge value={`$${row.profit.toFixed(2)}`} tone={profitTone(row.profit)} />
@@ -97,6 +116,7 @@ export function FinancePage() {
     { key: "date", label: "Date" },
     { key: "revenue", label: "Revenue", render: (row) => `$${row.revenue.toFixed(2)}` },
     { key: "costs", label: "Costs", render: (row) => `$${row.costs.toFixed(2)}` },
+    { key: "travelCost", label: "Travel", render: (row) => `$${row.travelCost.toFixed(2)}` },
     {
       key: "profit",
       label: "Profit",
@@ -115,7 +135,15 @@ export function FinancePage() {
   const suburbColumns = [
     { key: "suburb", label: "Suburb" },
     { key: "visits", label: "Completed Visits" },
-    { key: "revenue", label: "Revenue", render: (row) => `$${row.revenue.toFixed(2)}` }
+    { key: "revenue", label: "Revenue", render: (row) => `$${row.revenue.toFixed(2)}` },
+    { key: "travel_cost", label: "Travel Cost", render: (row) => `$${row.travel_cost.toFixed(2)}` },
+    { key: "profit", label: "Profit", render: (row) => `$${row.profit.toFixed(2)}` },
+    { key: "marginPct", label: "Margin", render: (row) => `${row.marginPct}%` },
+    {
+      key: "signal",
+      label: "Signal",
+      render: (row) => <Badge value={row.signal} tone={areaSignalTone(row.signal)} />
+    }
   ];
 
   return (
@@ -134,8 +162,12 @@ export function FinancePage() {
       <section className="stat-grid">
         <StatCard label="Completed Houses" value={daily.completedHouses} hint={`Date ${selectedDate}`} />
         <StatCard label="Total Revenue" value={`$${daily.revenue.toFixed(2)}`} hint="Visit revenue" />
-        <StatCard label="Total Costs" value={`$${daily.totalCosts.toFixed(2)}`} hint="Gas + products + wages" />
-        <StatCard label="Daily Profit" value={`$${daily.profit.toFixed(2)}`} hint={`Margin ${marginPct}%`} />
+        <StatCard
+          label="Total Costs"
+          value={`$${(daily.totalCosts + daily.estimatedTravelCost).toFixed(2)}`}
+          hint="Ops costs + estimated travel"
+        />
+        <StatCard label="Daily Profit" value={`$${daily.adjustedProfit.toFixed(2)}`} hint={`Adj. margin ${marginPct}%`} />
       </section>
 
       <section className="stat-grid">
@@ -170,6 +202,14 @@ export function FinancePage() {
               <span>Profit margin</span>
               <strong>{marginPct}%</strong>
             </p>
+            <p>
+              <span>Estimated travel cost</span>
+              <strong>${daily.estimatedTravelCost.toFixed(2)}</strong>
+            </p>
+            <p>
+              <span>Adjusted profit</span>
+              <strong>${daily.adjustedProfit.toFixed(2)}</strong>
+            </p>
           </div>
         </Card>
 
@@ -189,11 +229,15 @@ export function FinancePage() {
             </p>
             <p>
               <span>Total costs</span>
-              <strong>${monthly.totalCosts.toFixed(2)}</strong>
+              <strong>${(monthly.totalCosts + monthly.estimatedTravelCost).toFixed(2)}</strong>
             </p>
             <p>
               <span>Estimated profit</span>
-              <strong>${monthly.profit.toFixed(2)}</strong>
+              <strong>${monthly.adjustedProfit.toFixed(2)}</strong>
+            </p>
+            <p>
+              <span>Estimated travel cost</span>
+              <strong>${monthly.estimatedTravelCost.toFixed(2)}</strong>
             </p>
             <p>
               <span>Average revenue per house</span>
@@ -258,6 +302,43 @@ export function FinancePage() {
           <p>
             <span>Outstanding balance due</span>
             <strong>${invoiceSummary.balanceDue.toFixed(2)}</strong>
+          </p>
+          <p>
+            <span>Captured payments</span>
+            <strong>${paymentSummary.capturedAmount.toFixed(2)}</strong>
+          </p>
+          <p>
+            <span>Pending payments</span>
+            <strong>${paymentSummary.pendingAmount.toFixed(2)}</strong>
+          </p>
+          <p>
+            <span>Collection rate</span>
+            <strong>{paymentSummary.collectionRate}%</strong>
+          </p>
+        </div>
+      </Card>
+
+      <Card title="Area profitability summary" subtitle="Suburb-level revenue, travel pressure, and profit quality">
+        <div className="detail-list">
+          <p>
+            <span>Total area revenue</span>
+            <strong>${areaInsights.summary.totalRevenue.toFixed(2)}</strong>
+          </p>
+          <p>
+            <span>Total area costs</span>
+            <strong>${areaInsights.summary.totalCost.toFixed(2)}</strong>
+          </p>
+          <p>
+            <span>Travel cost component</span>
+            <strong>${areaInsights.summary.totalTravelCost.toFixed(2)}</strong>
+          </p>
+          <p>
+            <span>Total area profit</span>
+            <strong>${areaInsights.summary.totalProfit.toFixed(2)}</strong>
+          </p>
+          <p>
+            <span>At-risk suburbs</span>
+            <strong>{areaInsights.rows.filter((row) => row.signal === "at_risk").length}</strong>
           </p>
         </div>
       </Card>

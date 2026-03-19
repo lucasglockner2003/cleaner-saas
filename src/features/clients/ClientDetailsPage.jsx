@@ -38,7 +38,7 @@ export function ClientDetailsPage() {
     );
   }
 
-  const { client, notes, visitHistory, metrics, instructionTokens, nextVisit, recurringServices } = snapshot;
+  const { client, notes, visitHistory, metrics, instructionTokens, nextVisit, recurringServices, crmProfile } = snapshot;
 
   function handleSaveClient(payload) {
     const result = actions.updateClient(client.id, payload);
@@ -133,8 +133,28 @@ export function ClientDetailsPage() {
               <strong>{formatDate(client.last_cleaning_at)}</strong>
             </p>
             <p>
+              <span>Acquisition source</span>
+              <strong>{client.acquisition_source || crmProfile?.acquisition_source || "-"}</strong>
+            </p>
+            <p>
+              <span>Referral source</span>
+              <strong>{client.referral_source || crmProfile?.referral_source || "-"}</strong>
+            </p>
+            <p>
               <span>Notes Summary</span>
               <strong>{client.notes_summary || "-"}</strong>
+            </p>
+            <p>
+              <span>Location readiness</span>
+              <strong>{metrics.geocodeReady ? "Geocoded" : "Pending geocode"}</strong>
+            </p>
+            <p>
+              <span>Coordinates</span>
+              <strong>
+                {client.latitude != null && client.longitude != null
+                  ? `${client.latitude.toFixed(4)}, ${client.longitude.toFixed(4)}`
+                  : "-"}
+              </strong>
             </p>
             <p>
               <span>Average Actual Duration</span>
@@ -147,6 +167,18 @@ export function ClientDetailsPage() {
                   ? "-"
                   : `${metrics.averageDeltaMin > 0 ? "+" : ""}${metrics.averageDeltaMin} min`}
               </strong>
+            </p>
+            <p>
+              <span>Total revenue</span>
+              <strong>${metrics.totalRevenue.toFixed(2)}</strong>
+            </p>
+            <p>
+              <span>Paid total</span>
+              <strong>${metrics.paidTotal.toFixed(2)}</strong>
+            </p>
+            <p>
+              <span>Outstanding balance</span>
+              <strong>${metrics.outstandingBalance.toFixed(2)}</strong>
             </p>
           </div>
         </Card>

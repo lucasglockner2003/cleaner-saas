@@ -168,6 +168,12 @@ textarea:focus {
   gap: 0.65rem;
 }
 
+.sync-banner.is-critical-config {
+  border-color: #e3b0b0;
+  background: #fff1f1;
+  color: #8a2328;
+}
+
 .mutation-indicator {
   margin: 0.45rem 1.2rem 0;
   border: 1px dashed #adc7d4;
@@ -203,6 +209,11 @@ textarea:focus {
   color: #155f4f;
   border-radius: 999px;
   padding: 0.36rem 0.74rem;
+}
+
+.top-header-chip.danger {
+  background: #ffe4e4;
+  color: #8b2328;
 }
 
 .app-content {
@@ -394,6 +405,12 @@ textarea:focus {
 .table-wrap {
   width: 100%;
   overflow-x: auto;
+}
+
+.table-foot-actions {
+  margin-top: 0.55rem;
+  display: flex;
+  justify-content: flex-end;
 }
 
 .data-table {
@@ -640,7 +657,7 @@ textarea:focus {
 }
 
 .dispatch-column {
-  min-height: 520px;
+  min-height: 620px;
 }
 
 .schedule-column-header {
@@ -719,6 +736,26 @@ textarea:focus {
 .schedule-column-footer p {
   display: flex;
   justify-content: space-between;
+}
+
+.route-insight-box {
+  border: 1px solid #d7e5ed;
+  border-radius: 0.62rem;
+  padding: 0.46rem 0.5rem;
+  background: #f7fbfd;
+  display: grid;
+  gap: 0.42rem;
+}
+
+.route-preview-list {
+  display: grid;
+  gap: 0.35rem;
+  max-height: 190px;
+  overflow-y: auto;
+}
+
+.route-preview-list .row-item {
+  padding: 0.42rem 0.5rem;
 }
 
 .code-like {

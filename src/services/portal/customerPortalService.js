@@ -1,7 +1,9 @@
 import { findById, safeTrim } from "../helpers";
 import { listBookingRequests } from "../bookings/bookingsService";
 import { listInvoices } from "../invoices/invoicesService";
+import { listPayments } from "../payments/paymentsService";
 import { listRecurringPreferences, projectAllRecurringServices } from "../recurring/recurringScheduleService";
+import { getClientSubscriptionSnapshot } from "../subscriptions/subscriptionsService";
 
 function getServiceTypeName(db, serviceTypeId) {
   return findById(db.serviceTypes ?? [], serviceTypeId)?.name ?? "-";
@@ -108,8 +110,27 @@ export function getCustomerPortalSnapshot(db, user) {
     period_end: invoice.period_end,
     due_date: invoice.due_date,
     total: invoice.total,
-    balance_due: invoice.balance_due
+    balance_due: invoice.balance_due,
+    captured_amount: invoice.captured_amount ?? 0,
+    pending_payment_amount: invoice.pending_payment_amount ?? 0,
+    latest_payment_status: invoice.latest_payment_status ?? "none",
+    latest_payment_ref: invoice.latest_payment_ref ?? null
   }));
+  const payments = listPayments(db, {
+    clientId: account.client_id
+  }).map((payment) => ({
+    id: payment.id,
+    invoice_id: payment.invoice_id,
+    invoice_number: payment.invoice_number,
+    amount: payment.amount,
+    status: payment.status,
+    method_type: payment.method_type,
+    provider: payment.provider,
+    provider_ref: payment.provider_ref,
+    created_at: payment.created_at,
+    captured_at: payment.captured_at
+  }));
+  const subscription = getClientSubscriptionSnapshot(db, account.client_id);
 
   const recurringServices = listRecurringPreferences(db, {
     clientId: account.client_id
@@ -149,6 +170,8 @@ export function getCustomerPortalSnapshot(db, user) {
     upcomingVisits,
     pastVisits,
     invoices,
+    payments,
+    subscription,
     recurringServices,
     recurringProjections,
     bookingRequests,
@@ -164,7 +187,12 @@ export function getCustomerPortalSnapshot(db, user) {
       upcomingCount: upcomingVisits.length,
       completedCount: pastVisits.filter((item) => item.status === "completed").length,
       openInvoiceCount: invoices.filter((item) => item.status === "issued" && item.balance_due > 0).length,
-      proofReadyVisits: pastVisits.filter((item) => item.proof.before.length + item.proof.after.length > 0).length
+      proofReadyVisits: pastVisits.filter((item) => item.proof.before.length + item.proof.after.length > 0).length,
+      activePlan: subscription.active?.plan_name ?? "No active plan",
+      outstandingBalance: invoices.reduce((total, invoice) => total + (invoice.balance_due ?? 0), 0),
+      paidTotal: payments
+        .filter((payment) => payment.status === "captured")
+        .reduce((total, payment) => total + (payment.amount ?? 0), 0)
     }
   };
 }

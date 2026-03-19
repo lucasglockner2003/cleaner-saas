@@ -4,6 +4,8 @@
 
 - `AuthProvider` manages session lifecycle and role/user-type helpers.
 - `authRepository` supports local and Supabase adapters.
+- Session expiry is tracked (`expires_at`) and surfaced to runtime UI.
+- Supabase auth-state subscription updates session reactively.
 - `ProtectedRoute` enforces:
   - authenticated session
   - allowed role(s)
@@ -46,6 +48,7 @@
 - Supabase user metadata mapping supports:
   - `role`
   - `user_type`
+  - `organization_id` (tenant readiness claim target)
   - `client_id`
   - `portal_account_id`
 - This supports future row-level policies for:
@@ -55,7 +58,7 @@
 ## Next security hardening steps
 
 1. Move local demo users to real identity provider only.
-2. Add tenant/org claims to all sessions.
+2. Enforce tenant/org claims across all production sessions.
 3. Enforce RLS by tenant + user type + linked client.
 4. Add action-level authorization checks in repositories.
-5. Add audit logs for sensitive status and billing transitions.
+5. Enable centralized monitoring for auth/session anomalies.

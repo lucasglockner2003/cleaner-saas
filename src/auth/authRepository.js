@@ -16,6 +16,11 @@ function createLocalAuthRepository() {
         return null;
       }
 
+      if (session.expires_at && new Date(session.expires_at).getTime() <= Date.now()) {
+        storage.writeAuthSession(null);
+        return null;
+      }
+
       return session;
     },
 
@@ -56,7 +61,8 @@ function createLocalAuthRepository() {
           portal_account_id: user.portal_account_id ?? null
         },
         token: `local-${Date.now()}`,
-        provider: "local"
+        provider: "local",
+        expires_at: new Date(Date.now() + 8 * 60 * 60 * 1000).toISOString()
       };
 
       storage.writeAuthSession(session);
@@ -72,6 +78,10 @@ function createLocalAuthRepository() {
       return {
         ok: true
       };
+    },
+
+    subscribe() {
+      return () => {};
     }
   };
 }
@@ -99,6 +109,15 @@ function createSupabaseAuthRepository() {
     return null;
   }
 
+  function toSessionExpiryIso(session) {
+    if (!session?.expires_at) {
+      return null;
+    }
+
+    const ms = Number(session.expires_at) * 1000;
+    return Number.isNaN(ms) ? null : new Date(ms).toISOString();
+  }
+
   return {
     mode: "supabase",
 
@@ -116,6 +135,7 @@ function createSupabaseAuthRepository() {
       return {
         token: session.access_token,
         provider: "supabase",
+        expires_at: toSessionExpiryIso(session),
         user: mapSupabaseUser(session.user)
       };
     },
@@ -152,6 +172,7 @@ function createSupabaseAuthRepository() {
         session: {
           token: data.session.access_token,
           provider: "supabase",
+          expires_at: toSessionExpiryIso(data.session),
           user: mappedUser
         }
       };
@@ -164,6 +185,26 @@ function createSupabaseAuthRepository() {
         ok: !error,
         error: error?.message ?? null
       };
+    },
+
+    subscribe(listener) {
+      const {
+        data: { subscription }
+      } = supabase.auth.onAuthStateChange((_event, session) => {
+        if (!session) {
+          listener(null);
+          return;
+        }
+
+        listener({
+          token: session.access_token,
+          provider: "supabase",
+          expires_at: toSessionExpiryIso(session),
+          user: mapSupabaseUser(session.user)
+        });
+      });
+
+      return () => subscription.unsubscribe();
     }
   };
 }

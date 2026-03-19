@@ -15,10 +15,19 @@ export const DB_COLLECTION_TO_TABLE = {
   productMovements: "product_movements",
   reminders: "reminders",
   invoices: "invoices",
+  payments: "payments",
+  paymentEvents: "payment_events",
+  subscriptionPlans: "subscription_plans",
+  clientSubscriptions: "client_subscriptions",
   ratings: "ratings",
   communicationJobs: "communication_jobs",
   bookingRequests: "booking_requests",
-  portalAccounts: "portal_accounts"
+  portalAccounts: "portal_accounts",
+  crmProfiles: "crm_profiles",
+  referrals: "referrals",
+  growthCampaigns: "growth_campaigns",
+  operationJobs: "operation_jobs",
+  auditEvents: "audit_events"
 };
 
 export const TABLE_TO_DB_COLLECTION = Object.entries(DB_COLLECTION_TO_TABLE).reduce((acc, [key, value]) => {

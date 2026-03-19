@@ -30,12 +30,46 @@ export function AuthProvider({ children }) {
     };
   }, []);
 
+  useEffect(() => {
+    if (typeof authRepository.subscribe !== "function") {
+      return undefined;
+    }
+
+    const unsubscribe = authRepository.subscribe((nextSession) => {
+      setSession(nextSession);
+    });
+
+    return () => {
+      if (typeof unsubscribe === "function") {
+        unsubscribe();
+      }
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!session?.expires_at) {
+      return undefined;
+    }
+
+    const interval = window.setInterval(() => {
+      const expiresAtMs = new Date(session.expires_at).getTime();
+      if (!Number.isNaN(expiresAtMs) && expiresAtMs <= Date.now()) {
+        setSession(null);
+      }
+    }, 30_000);
+
+    return () => window.clearInterval(interval);
+  }, [session?.expires_at]);
+
   const value = useMemo(
     () => ({
       session,
       user: session?.user ?? null,
       isAuthenticated: Boolean(session?.user),
       isAuthLoading,
+      sessionExpiresAt: session?.expires_at ?? null,
+      sessionExpiringSoon:
+        session?.expires_at != null ? new Date(session.expires_at).getTime() - Date.now() < 15 * 60 * 1000 : false,
       authMode: authRepository.mode,
       userType: session?.user?.user_type ?? null,
       isCustomerUser: session?.user?.user_type === "customer",

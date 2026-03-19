@@ -30,13 +30,27 @@ function calculateTotals(lineItems = []) {
 
 function enrichInvoice(db, invoice) {
   const client = findById(db.clients, invoice.client_id);
+  const payments = (db.payments ?? []).filter((item) => item.invoice_id === invoice.id);
+  const capturedAmount = payments
+    .filter((item) => item.status === "captured")
+    .reduce((total, item) => total + (item.amount ?? 0), 0);
+  const pendingAmount = payments
+    .filter((item) => item.status === "pending")
+    .reduce((total, item) => total + (item.amount ?? 0), 0);
+  const refundedAmount = payments.reduce((total, item) => total + (item.refunded_amount ?? 0), 0);
+  const latestPayment = [...payments].sort((a, b) => b.created_at.localeCompare(a.created_at))[0] ?? null;
 
   return {
     ...invoice,
     client_name: client?.full_name ?? "-",
     client_email: client?.email ?? "",
     visit_count: invoice.line_items?.length ?? 0,
-    is_overdue: invoice.status === "issued" && invoice.due_date ? invoice.due_date < new Date().toISOString().slice(0, 10) : false
+    is_overdue: invoice.status === "issued" && invoice.due_date ? invoice.due_date < new Date().toISOString().slice(0, 10) : false,
+    captured_amount: Number(capturedAmount.toFixed(2)),
+    pending_payment_amount: Number(pendingAmount.toFixed(2)),
+    refunded_amount: Number(refundedAmount.toFixed(2)),
+    latest_payment_status: latestPayment?.status ?? "none",
+    latest_payment_ref: latestPayment?.provider_ref ?? latestPayment?.id ?? null
   };
 }
 
@@ -260,6 +274,13 @@ export function setInvoiceCommunicationStatus(db, invoiceId, communicationStatus
 
 export function getInvoiceStats(db) {
   const invoices = listInvoices(db);
+  const payments = db.payments ?? [];
+  const collectedAmount = payments
+    .filter((payment) => payment.status === "captured")
+    .reduce((total, payment) => total + (payment.amount ?? 0), 0);
+  const pendingPaymentAmount = payments
+    .filter((payment) => payment.status === "pending")
+    .reduce((total, payment) => total + (payment.amount ?? 0), 0);
   const totals = invoices.reduce(
     (acc, invoice) => {
       acc.total += 1;
@@ -280,7 +301,9 @@ export function getInvoiceStats(db) {
     draft: totals.draft ?? 0,
     issued: totals.issued ?? 0,
     paid: totals.paid ?? 0,
-    failed: totals.failed ?? 0
+    failed: totals.failed ?? 0,
+    collectedAmount: Number(collectedAmount.toFixed(2)),
+    pendingPaymentAmount: Number(pendingPaymentAmount.toFixed(2))
   };
 }
 

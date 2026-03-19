@@ -3,6 +3,7 @@ import { Card } from "../../components/ui/Card";
 import { DataTable } from "../../components/ui/DataTable";
 import { EmptyState } from "../../components/ui/EmptyState";
 import { StatCard } from "../../components/ui/StatCard";
+import { Badge } from "../../components/ui/Badge";
 import { useAppData } from "../../hooks/useAppData";
 import { scheduleService } from "../../services";
 import { ScheduleDayColumn } from "./ScheduleDayColumn";
@@ -10,10 +11,11 @@ import { useAuth } from "../../auth/useAuth";
 import { ROLES } from "../../auth/roles";
 
 export function SchedulePage() {
-  const { db, actions } = useAppData();
+  const { db, actions, mutationState } = useAppData();
   const { canAccess } = useAuth();
   const week = scheduleService.getWeeklySchedule(db);
   const stats = scheduleService.getScheduleQuickStats(db);
+  const optimizationSignals = scheduleService.getWeeklyOptimizationSignals(db);
   const [teamFilter, setTeamFilter] = useState("all");
   const canManageDispatch = canAccess([ROLES.OWNER, ROLES.OPS]);
 
@@ -31,6 +33,12 @@ export function SchedulePage() {
     in_progress: day.daySummary?.inProgress ?? 0,
     overruns: day.daySummary?.overrunCount ?? 0,
     late_starts: day.daySummary?.lateStarts ?? 0,
+    route_distance: day.daySummary?.routeDistanceKm ?? 0,
+    route_travel: day.daySummary?.routeTravelMin ?? 0,
+    route_savings: day.daySummary?.routeTravelMinSaved ?? 0,
+    overbook_risk: day.daySummary?.overbookRisk ?? "low",
+    geocode_coverage: day.daySummary ? Math.round((day.daySummary.geocodeCoveragePct ?? 0) * 100) : 0,
+    load_signal: day.loadSignal?.signal ?? "balanced",
     projected_end: day.estimation?.projectedEnd ?? "-"
   }));
 
@@ -40,8 +48,27 @@ export function SchedulePage() {
     { key: "total", label: "Visits" },
     { key: "completed", label: "Done" },
     { key: "in_progress", label: "In Progress" },
+    { key: "route_distance", label: "Route km", render: (row) => row.route_distance.toFixed(1) },
+    { key: "route_travel", label: "Travel min", render: (row) => `${row.route_travel}m` },
+    { key: "route_savings", label: "Potential save", render: (row) => `${row.route_savings}m` },
+    {
+      key: "overbook_risk",
+      label: "Overbook",
+      render: (row) => <Badge value={row.overbook_risk} tone={row.overbook_risk === "high" ? "danger" : row.overbook_risk === "medium" ? "warning" : "success"} />
+    },
+    {
+      key: "load_signal",
+      label: "Load signal",
+      render: (row) => (
+        <Badge
+          value={row.load_signal}
+          tone={row.load_signal === "overloaded" ? "danger" : row.load_signal === "underutilized" ? "warning" : "neutral"}
+        />
+      )
+    },
+    { key: "geocode_coverage", label: "Geo ready", render: (row) => `${row.geocode_coverage}%` },
     { key: "overruns", label: "Overruns" },
-    { key: "late_starts", label: "Late Starts" },
+    { key: "late_starts", label: "Late starts" },
     { key: "projected_end", label: "Projected End" }
   ];
 
@@ -64,8 +91,66 @@ export function SchedulePage() {
       <section className="stat-grid">
         <StatCard label="Total Visits" value={stats.total} hint="This schedule set" />
         <StatCard label="Completed" value={stats.completed} hint="Execution tracked" />
-        <StatCard label="In Progress" value={stats.inProgress} hint="Live houses now" />
-        <StatCard label="Scheduled" value={stats.scheduled} hint="Upcoming today/week" />
+        <StatCard label="Route Save Potential" value={`${stats.routeSavingsMin} min`} hint="Weekly recommended gains" />
+        <StatCard
+          label="Load Warnings"
+          value={`${stats.overloadedDays} overloaded / ${stats.underutilizedDays} underused`}
+          hint="Cross-team balancing signal"
+        />
+      </section>
+
+      <section className="split-grid">
+        <Card title="Routing intelligence snapshot" subtitle="Heuristic optimization and map-readiness indicators">
+          <div className="detail-list">
+            <p>
+              <span>Estimated route distance (week)</span>
+              <strong>{optimizationSignals.routeDistanceKm.toFixed(1)} km</strong>
+            </p>
+            <p>
+              <span>Estimated travel time</span>
+              <strong>{optimizationSignals.routeTravelMin} min</strong>
+            </p>
+            <p>
+              <span>Potential travel reduction</span>
+              <strong>{optimizationSignals.potentialTravelMinSaved} min</strong>
+            </p>
+            <p>
+              <span>Potential km reduction</span>
+              <strong>{optimizationSignals.potentialDistanceKmSaved.toFixed(1)} km</strong>
+            </p>
+            <p>
+              <span>Average geocode coverage</span>
+              <strong>{Math.round(optimizationSignals.averageGeocodeCoveragePct * 100)}%</strong>
+            </p>
+          </div>
+        </Card>
+
+        <Card title="Top optimization opportunity">
+          {optimizationSignals.topOpportunity ? (
+            <div className="detail-list">
+              <p>
+                <span>Day / Team</span>
+                <strong>
+                  {optimizationSignals.topOpportunity.day_name} - {optimizationSignals.topOpportunity.team_name}
+                </strong>
+              </p>
+              <p>
+                <span>Date</span>
+                <strong>{optimizationSignals.topOpportunity.date}</strong>
+              </p>
+              <p>
+                <span>Travel minutes save</span>
+                <strong>{optimizationSignals.topOpportunity.travel_min_saved} min</strong>
+              </p>
+              <p>
+                <span>Distance save</span>
+                <strong>{optimizationSignals.topOpportunity.distance_km_saved.toFixed(1)} km</strong>
+              </p>
+            </div>
+          ) : (
+            <EmptyState title="No optimization opportunity" message="More scheduled visits are needed for route analysis." />
+          )}
+        </Card>
       </section>
 
       <Card title="Dispatch day summary" subtitle="At-a-glance operations board by day and assigned team">
@@ -107,6 +192,10 @@ export function SchedulePage() {
               onAssignEmployee={(visitId, employeeId) =>
                 canManageDispatch ? actions.assignVisitEmployee(visitId, employeeId) : null
               }
+              onApplySuggestedOrder={(scheduleDayId) =>
+                canManageDispatch ? actions.applySuggestedRouteOrder(scheduleDayId) : null
+              }
+              applySuggestedPending={Boolean(mutationState.applySuggestedRouteOrder)}
               canManageDispatch={canManageDispatch}
             />
           ))}

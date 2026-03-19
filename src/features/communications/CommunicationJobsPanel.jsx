@@ -118,6 +118,7 @@ export function CommunicationJobsPanel({
       <DataTable
         columns={columns}
         rows={jobs}
+        windowSize={25}
         empty={
           <EmptyState title="No communication jobs" message="Queue reminders, invoices, or completion emails to create jobs." />
         }

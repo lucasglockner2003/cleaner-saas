@@ -7,6 +7,8 @@ export const CLIENT_FORM_DEFAULTS = {
   service_type_id: "st-regular",
   cleaning_frequency: "Weekly",
   estimated_duration_min: 90,
+  acquisition_source: "website",
+  referral_source: "",
   notes_summary: "",
   special_instructions: ""
 };
@@ -18,4 +20,3 @@ export function normalizeClientForm(initial = {}) {
     estimated_duration_min: Number(initial.estimated_duration_min ?? CLIENT_FORM_DEFAULTS.estimated_duration_min)
   };
 }
-

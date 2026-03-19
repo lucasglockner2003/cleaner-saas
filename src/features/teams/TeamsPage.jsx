@@ -22,6 +22,7 @@ export function TeamsPage() {
   const totalAssignedVisits = teams.reduce((total, team) => total + team.stats.assignedVisits, 0);
   const totalWorkloadHours = teams.reduce((total, team) => total + team.stats.workloadHours, 0);
   const totalRevenue = teams.reduce((total, team) => total + team.stats.totalRevenue, 0);
+  const totalRouteKm = teams.reduce((total, team) => total + (team.stats.routeDistanceKm ?? 0), 0);
 
   const performanceRows = teams.map((team) => ({
     id: team.id,
@@ -33,7 +34,11 @@ export function TeamsPage() {
     in_progress: team.stats.inProgressVisits,
     workload: team.stats.workloadHours,
     revenue: team.stats.totalRevenue,
-    overrun_rate: team.stats.overrunRate
+    overrun_rate: team.stats.overrunRate,
+    route_km: team.stats.routeDistanceKm ?? 0,
+    route_travel_min: team.stats.routeTravelMin ?? 0,
+    route_save_min: team.stats.routeTravelMinSaved ?? 0,
+    geocode_coverage: team.stats.geocodeCoveragePct ?? 0
   }));
 
   const columns = [
@@ -53,6 +58,26 @@ export function TeamsPage() {
       key: "overrun_rate",
       label: "Overrun Rate",
       render: (row) => <Badge value={`${Math.round(row.overrun_rate * 100)}%`} tone={overrunTone(row.overrun_rate)} />
+    },
+    {
+      key: "route_km",
+      label: "Route km",
+      render: (row) => row.route_km.toFixed(1)
+    },
+    {
+      key: "route_travel_min",
+      label: "Travel min",
+      render: (row) => row.route_travel_min
+    },
+    {
+      key: "route_save_min",
+      label: "Potential save",
+      render: (row) => `${row.route_save_min}m`
+    },
+    {
+      key: "geocode_coverage",
+      label: "Geo coverage",
+      render: (row) => `${Math.round(row.geocode_coverage * 100)}%`
     }
   ];
 
@@ -67,6 +92,7 @@ export function TeamsPage() {
           value={`${totalWorkloadHours.toFixed(1)} hrs`}
           hint={`Completed revenue $${totalRevenue.toFixed(2)}`}
         />
+        <StatCard label="Route Distance" value={`${totalRouteKm.toFixed(1)} km`} hint="Current schedule set" />
       </section>
 
       <Card title="Team management overview">
@@ -124,8 +150,20 @@ export function TeamsPage() {
                   <strong>{Math.round(team.stats.overrunRate * 100)}%</strong>
                 </p>
                 <p>
-                  <span>Route module</span>
-                  <strong>{team.route_placeholder}</strong>
+                  <span>Route distance</span>
+                  <strong>{(team.stats.routeDistanceKm ?? 0).toFixed(1)} km</strong>
+                </p>
+                <p>
+                  <span>Travel time</span>
+                  <strong>{team.stats.routeTravelMin ?? 0} min</strong>
+                </p>
+                <p>
+                  <span>Potential route save</span>
+                  <strong>{team.stats.routeTravelMinSaved ?? 0} min</strong>
+                </p>
+                <p>
+                  <span>Geo coverage</span>
+                  <strong>{Math.round((team.stats.geocodeCoveragePct ?? 0) * 100)}%</strong>
                 </p>
               </div>
             </Card>
@@ -135,4 +173,3 @@ export function TeamsPage() {
     </div>
   );
 }
-
