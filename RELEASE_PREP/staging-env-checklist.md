@@ -13,6 +13,7 @@
 - [ ] `VITE_PAYMENT_GATEWAY_AUTH_TOKEN` configured.
 - [ ] `VITE_STRIPE_PUBLISHABLE_KEY` configured.
 - [ ] Server secrets configured: `STRIPE_SECRET_KEY`, `STRIPE_WEBHOOK_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`.
+- [ ] `APP_PAYMENT_WEBHOOK_URL` configured for webhook/worker runtime.
 
 ## Validation commands
 
@@ -24,5 +25,6 @@
 
 - [ ] `STAGING_DATABASE_URL` exported in shell.
 - [ ] `npm run db:bundle:pilot` generated bundle artifact.
+- [ ] `npm run db:staging:migrate` completed.
 - [ ] `npm run db:staging:reset-seed` completed.
 - [ ] Staging login works for owner, ops, and cleaner roles.

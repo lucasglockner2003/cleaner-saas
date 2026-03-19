@@ -96,6 +96,15 @@ export function getRuntimeConfigReport() {
     criticalIssues.push("Supabase auth provider is enabled but URL/Anon key is missing.");
   }
 
+  if (appEnv.runtimeEnv === "production") {
+    if (appEnv.dataProvider !== "supabase") {
+      criticalIssues.push("Production runtime requires `VITE_DATA_PROVIDER=supabase`.");
+    }
+    if (appEnv.authProvider !== "supabase") {
+      criticalIssues.push("Production runtime requires `VITE_AUTH_PROVIDER=supabase`.");
+    }
+  }
+
   if (!appEnv.organizationId || appEnv.organizationId === "org-default") {
     if (appEnv.runtimeEnv === "production") {
       criticalIssues.push("`VITE_ORGANIZATION_ID` cannot remain default in production.");
@@ -130,6 +139,9 @@ export function getRuntimeConfigReport() {
     if (appEnv.stripePublishableKey && !appEnv.stripePublishableKey.startsWith("pk_")) {
       warnings.push("`VITE_STRIPE_PUBLISHABLE_KEY` is present but does not look like a Stripe publishable key.");
     }
+    if (appEnv.runtimeEnv === "production" && appEnv.stripePublishableKey.startsWith("pk_test_")) {
+      criticalIssues.push("Stripe production runtime requires a live publishable key (`pk_live_...`).");
+    }
   }
 
   trackedUrls.forEach((entry) => {
@@ -142,6 +154,9 @@ export function getRuntimeConfigReport() {
     }
     if (appEnv.runtimeEnv === "production" && entry.value.startsWith("http://")) {
       criticalIssues.push(`${entry.key} must use HTTPS in production.`);
+    }
+    if (appEnv.runtimeEnv === "production" && /localhost|127\.0\.0\.1/i.test(entry.value)) {
+      criticalIssues.push(`${entry.key} must not point to localhost in production.`);
     }
   });
 

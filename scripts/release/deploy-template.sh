@@ -10,19 +10,19 @@ fi
 echo "[deploy] Starting deploy template for $ENVIRONMENT"
 
 if [[ "$ENVIRONMENT" == "staging" ]]; then
-  npm run check:env:staging
+  npm run deploy:check:staging
 else
-  npm run check:env:production
+  npm run deploy:check:production
 fi
-
-npm run test:run
-npm run build
-npm run db:bundle:pilot
 
 echo
 echo "[deploy] Manual provider/runtime steps:"
 echo "1. Apply Supabase migrations:"
-echo "   supabase db push --linked"
+if [[ "$ENVIRONMENT" == "staging" ]]; then
+  echo "   npm run db:staging:migrate"
+else
+  echo "   npm run db:production:migrate"
+fi
 echo "2. Deploy Stripe webhook endpoint runtime with STRIPE_WEBHOOK_SECRET."
 echo "3. Deploy operations worker runtime with scheduler trigger."
 echo "4. Deploy frontend with environment file for $ENVIRONMENT."

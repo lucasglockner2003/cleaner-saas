@@ -1,6 +1,6 @@
 -- Auto-generated migration bundle
 -- Bundle: pilot-launch
--- Generated at: 2026-03-19T01:16:22.491Z
+-- Generated at: 2026-03-19T02:34:25.692Z
 
 -- [1] supabase\migrations\20260320_launch_readiness.sql
 -- Launch readiness migration

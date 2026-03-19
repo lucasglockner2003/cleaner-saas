@@ -1,57 +1,53 @@
-# Worker Runtime (Operation Jobs)
+# Worker Runtime (First Live Deployment)
 
-## Purpose
+## 1. Service to deploy
 
-Operation jobs execute asynchronous workflows outside request/UI paths:
+Deploy one worker runtime process per environment that can trigger operation cycles.
 
-- reminder dispatch
-- invoice dispatch
-- CRM lifecycle refresh
-- payment reconciliation
+Reference files:
 
-## Queue contract
+- `infra/workers/operations/runnerExample.mjs`
+- `infra/workers/operations/runCycleExample.mjs`
 
-Job lifecycle:
+## 2. Required environment variables
 
-- `queued`
-- `running` (with `worker_id` + `lock_expires_at`)
-- `completed`
-- `retry_scheduled`
-- `failed`
+- `APP_PAYMENT_WEBHOOK_URL` (gateway endpoint supporting `operation_job_cycle`)
+- `PAYMENT_GATEWAY_AUTH_TOKEN`
+- `OPS_WORKER_ID` (example: `ops-worker-prod-1`)
+- optional:
+  - `OPS_WORKER_MAX_JOBS` (default 20)
+  - `OPS_WORKER_LOOP` (`true|false`)
+  - `OPS_WORKER_INTERVAL_MS` (default 60000)
 
-Safety behavior:
-
-- stale `running` jobs with expired lease can be recovered
-- retry count bounded by `max_attempts`
-
-## Runtime deployment model
+## 3. Execution model (production)
 
 Recommended:
 
-1. Scheduler (every 1-5 minutes) triggers a worker endpoint.
-2. Worker calls app operation cycle action with:
-   - `workerId`
-   - `maxJobs`
-   - `leaseMinutes`
-   - `recoverStaleRunning=true`
-3. Worker emits metrics/logs for success/failure/retry counts.
+1. Scheduler triggers worker every 1-5 minutes.
+2. Worker sends:
+   - `action=operation_job_cycle`
+   - payload with `workerId`, `maxJobs`, `leaseMinutes`, `recoverStaleRunning=true`
+3. Worker logs cycle outcome counts.
 
-Reference template:
-
-- `infra/workers/operations/runnerExample.mjs`
-- `infra/workers/operations/runCycleExample.mjs` (CLI/loop runner template)
-
-Run local worker cycle:
+## 4. Local run command
 
 ```bash
 npm run worker:operations:example
 ```
 
-## Operational safeguards
+## 5. Production verification checklist
 
-- Single-worker-per-tenant preferred initially.
-- Use strict request auth token for worker trigger endpoint.
-- Alert on:
-  - high failed job count
-  - growing retry queue
-  - stale running jobs
+1. Run one manual worker cycle after deploy.
+2. Confirm `operation_jobs` transitions:
+   - `queued -> running -> completed|retry_scheduled|failed`
+3. Confirm stale `running` rows recover when lease expires.
+4. Confirm reminder/invoice/CRM/payment jobs are processed.
+
+## 6. Operational safeguards
+
+- Keep one active worker per tenant for initial rollout.
+- Protect gateway endpoint with `PAYMENT_GATEWAY_AUTH_TOKEN`.
+- Alert when:
+  - failed jobs spike
+  - retry queue grows continuously
+  - running jobs exceed lease time repeatedly

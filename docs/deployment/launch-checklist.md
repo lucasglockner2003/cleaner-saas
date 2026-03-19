@@ -5,11 +5,8 @@ Use `RELEASE_PREP/*` checklists as the canonical rollout gate set.
 ## Fast command gates
 
 ```bash
-npm run check:env:staging
-npm run check:env:production
-npm run test:run
-npm run build
-npm run db:bundle:pilot
+npm run deploy:check:staging
+npm run deploy:check:production
 ```
 
 ## Pre-launch gates
@@ -17,7 +14,7 @@ npm run db:bundle:pilot
 1. `npm run test:run` passes.
 2. `npm run build` passes.
 3. Runtime config report shows no critical blockers in Settings.
-4. Supabase staging migration applied successfully.
+4. Supabase staging migration applied successfully (`npm run db:staging:migrate`).
 5. Stripe webhook verification tested with signed test event.
 6. Operation worker cycle tested end-to-end in staging.
 
@@ -47,7 +44,7 @@ Server/webhook runtime (not exposed to frontend):
 
 ## Release-day sequence
 
-1. Deploy migrations to production Supabase.
+1. Build migration bundle (`npm run db:bundle:pilot`) and deploy to production Supabase (`npm run db:production:migrate`).
 2. Deploy webhook runtime and verify signature checks.
 3. Deploy worker runtime/scheduler for operation jobs.
 4. Deploy frontend.

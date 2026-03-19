@@ -2,41 +2,57 @@
 
 Use together with `RELEASE_PREP/smoke-test-checklist.md`.
 
-## Immediate (first 15 minutes)
+## 1. Frontend health checks
 
-1. Open Settings and confirm no critical config blockers.
-2. Validate internal login and portal login.
-3. Create/update client and confirm persistence.
-4. Queue and run one operation job cycle.
-5. Record a payment and verify invoice balance update.
+1. Open `/login` and `/portal/login`; both must render.
+2. Login with internal and customer test accounts.
+3. Confirm Settings page shows zero critical config blockers.
+4. Navigate key pages (`/`, `/schedule`, `/visits`, `/monetization`, `/communications`) without runtime error boundary.
 
-## Stripe checks
+## 2. Webhook runtime health checks
 
-1. Send Stripe test webhook event.
-2. Confirm event appears in `payment_events`.
-3. Confirm matching payment transitions correctly.
-4. Confirm no rejected/unmatched event spike.
+1. Call webhook health endpoint:
+   ```bash
+   curl -i https://<webhook-domain>/health
+   ```
+2. Expect `HTTP 200`.
+3. Send Stripe test event to `POST /webhooks/stripe`.
+4. Verify webhook logs show signature verification success and forwarding success.
 
-## Supabase checks
+## 3. Worker runtime health checks
 
-1. Confirm RLS allows expected tenant users.
-2. Confirm wrong-tenant access is denied.
-3. Confirm `organization_id` is populated in new rows.
+1. Run one manual worker cycle.
+2. Confirm operation jobs transition from `queued/running` to `completed|retry_scheduled|failed`.
+3. Confirm stale running locks are recovered on subsequent cycle.
+4. Confirm scheduler cadence is active (every 1-5 minutes).
 
-## Worker checks
+## 4. Supabase connectivity checks
 
-1. Ensure scheduler runs operation cycle on cadence.
-2. Confirm `operation_jobs` do not accumulate stale `running` locks.
-3. Confirm retries eventually settle into `completed` or `failed`.
+1. Create/update a client in app and verify persistence after refresh.
+2. Run SQL checks:
+   ```sql
+   select count(*) from public.operation_jobs;
+   select count(*) from public.payment_events;
+   select count(*) from public.audit_events;
+   ```
+3. Confirm tenant scope:
+   - expected tenant users can read/write
+   - wrong-tenant access is denied
+   - new rows include correct `organization_id`
 
-## Audit checks
+## 5. Stripe connectivity checks
 
-1. Trigger a successful mutation and verify `audit_events` append.
-2. Trigger a validation failure and verify failure audit event.
+1. Confirm Stripe test event creates/updates corresponding `payment_events` row.
+2. Confirm matching payment status transition occurs.
+3. Replay same event id and confirm idempotent behavior (no duplicate state mutation).
+4. Run reconciliation cycle and verify pending provider-backed payments settle.
 
-## First-24h monitoring
+## 6. Audit and reliability checks
 
-- failed operation jobs
-- failed/rejected payment events
-- sync degradation warnings
-- auth/session anomalies
+1. Trigger one successful mutation and confirm `audit_events` append.
+2. Trigger one validation failure and confirm failure audit event.
+3. Confirm no sustained spikes in:
+   - failed operation jobs
+   - rejected/unmatched payment events
+   - sync degradation warnings
+   - auth/session anomalies

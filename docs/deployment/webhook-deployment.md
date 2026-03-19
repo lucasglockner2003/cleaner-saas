@@ -1,53 +1,66 @@
-# Webhook Deployment
+# Webhook Deployment (Stripe First)
 
-## Scope
+## 1. Service to deploy
 
-Current launch path focuses on Stripe payment webhooks.
+Deploy a dedicated webhook service exposing:
 
-## Endpoint requirements
+- `GET /health`
+- `POST /webhooks/stripe`
 
-- Must read raw request body (no pre-parsing before signature verification).
-- Must validate Stripe signature using webhook secret.
-- Must reject unsigned/invalid payloads with `400`.
-- Must authenticate forwarding calls to app/payment endpoint.
+Use `infra/webhooks/stripe/serverExample.mjs` as the baseline wiring.
 
-## Reference implementation
+## 2. Required environment variables
 
-- `infra/webhooks/stripe/verifyStripeSignature.mjs`
-- `infra/webhooks/stripe/mapStripeEventToPaymentEvent.mjs`
-- `infra/webhooks/stripe/handlerExample.mjs`
-- `infra/webhooks/stripe/serverExample.mjs` (HTTP wiring template)
+- `STRIPE_WEBHOOK_SECRET`
+- `STRIPE_SECRET_KEY`
+- `PAYMENT_GATEWAY_AUTH_TOKEN`
+- `APP_PAYMENT_WEBHOOK_URL`
+- optional: `STRIPE_WEBHOOK_PORT` (default `8787`)
 
-Run local webhook runtime:
+## 3. Critical behavior requirements
+
+1. Read raw body exactly (do not pre-parse JSON before verification).
+2. Verify `stripe-signature`.
+3. Reject invalid signature with `400`.
+4. Map event to normalized payload.
+5. Forward payload to `APP_PAYMENT_WEBHOOK_URL` with header:
+   - `x-payment-gateway-token`
+6. Return non-2xx only for true failure conditions.
+
+## 4. Local verification flow
+
+Start webhook runtime:
 
 ```bash
 npm run webhook:stripe:example
 ```
 
-## Security controls
+Health check:
 
-- Keep `STRIPE_WEBHOOK_SECRET` server-side only.
+```bash
+curl http://localhost:8787/health
+```
+
+## 5. Production verification flow
+
+1. Call `GET /health` on deployed webhook URL.
+2. Send Stripe test event from dashboard.
+3. Confirm webhook logs show:
+   - signature verified
+   - event forwarded to gateway
+4. Confirm app-side `payment_events` has new row for `provider_event_id`.
+
+## 6. Security controls
+
+- Keep Stripe keys and webhook secret server-side only.
 - Keep `PAYMENT_GATEWAY_AUTH_TOKEN` server-side only.
-- Rotate tokens periodically and on incident.
-- Rate-limit webhook endpoint where possible.
+- Use HTTPS only.
+- Rotate secrets/tokens on schedule and after incidents.
+- Apply rate limiting and request size limits at edge/proxy.
 
-## Delivery contract to app
+## 7. Minimum observability signals
 
-Forwarded payload should include:
-
-- `provider`
-- `provider_event_id`
-- `event_type`
-- `provider_intent_id`
-- `provider_ref`
-- `payment_status`
-- `failure_reason`
-- `raw_payload`
-
-## Observability
-
-Track:
-
-- webhook verification failures
-- forwarding failures
-- unmatched/rejected payment events in app tables
+- verification failures count
+- forwarding failures count
+- non-2xx responses from app gateway
+- end-to-end webhook latency

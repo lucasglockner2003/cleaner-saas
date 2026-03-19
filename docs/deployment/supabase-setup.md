@@ -1,75 +1,65 @@
-# Supabase Setup (Launch)
+# Supabase Setup (First Live Deployment)
 
-## 1. Apply migration
+## 1. Prerequisites
 
-Apply:
+- `psql` installed and available in PATH (or set `PSQL_BIN`).
+- `PRODUCTION_DATABASE_URL` and `STAGING_DATABASE_URL` set.
+- `.env.staging` and `.env.production` created from examples.
 
-- `supabase/migrations/20260320_launch_readiness.sql`
-- or generate/review bundle with:
-  - `npm run db:bundle:pilot`
-  - `supabase/migrations/generated/pilot-launch-bundle.sql`
+## 2. Build migration bundle (single source for deployment)
 
-This migration adds:
+```bash
+npm run db:bundle:pilot
+```
+
+Bundle output:
+
+- `supabase/migrations/generated/pilot-launch-bundle.sql`
+
+## 3. Apply migrations to staging first
+
+```bash
+npm run db:staging:migrate
+```
+
+Optional staging reseed:
+
+```bash
+npm run db:staging:reset-seed
+```
+
+## 4. Apply migrations to production
+
+```bash
+npm run db:production:migrate
+```
+
+## 5. Required schema after migration
+
+Must exist:
 
 - `payment_events`
 - `operation_jobs`
 - `audit_events`
-- launch-critical `organization_id` columns
-- indexes for billing/worker/audit paths
-- baseline RLS policies
 
-## 2. Schema expectations from code
+Must exist on `payments`:
 
-Code expects all collections in `src/persistence/tableMap.js` to exist as tables.
+- `idempotency_key`
+- `provider_event_id`
+- `reconciliation_status`
+- `provider_last_error`
+- `last_reconciled_at`
 
-Launch-critical additions:
+Must exist for tenant scope:
 
-- `payments` columns:
-  - `idempotency_key`
-  - `provider_event_id`
-  - `reconciliation_status`
-  - `provider_last_error`
-  - `last_reconciled_at`
-- `operation_jobs`:
-  - lease fields (`worker_id`, `lock_expires_at`)
-- `audit_events`:
-  - immutable action timeline rows
+- `organization_id` on launch-critical tables (`clients`, `invoices`, `payments`, `portal_accounts`, `booking_requests`, `payment_events`, `operation_jobs`, `audit_events`, etc.)
 
-## 3. Tenant scope
-
-Expected JWT claim:
-
-- `organization_id`
-
-Expected behavior:
-
-- Internal users: read/write rows for their `organization_id`
-- Customer users: restricted to own `client_id` + `organization_id`
-
-## 4. RLS rollout strategy
-
-1. Enable RLS on launch-critical tables.
-2. Apply tenant read policies first.
-3. Apply write policies for service-role worker/webhook runtimes.
-4. Run policy tests with:
-   - owner/ops user
-   - customer user
-   - wrong-tenant user (should deny)
-
-## 5. Known schema mismatch risks
-
-- Missing `organization_id` in tables: app falls back in some reads, but production should treat this as blocker.
-- Missing `updated_at`: conflict reconciliation quality drops.
-- Missing indexes on `operation_jobs` and `payments`: queue/reconciliation throughput degrades.
-
-## 6. Validation queries
-
-Run after migration:
+## 6. Post-migration SQL validation (run in Supabase SQL editor)
 
 ```sql
-select count(*) from public.payment_events;
-select count(*) from public.operation_jobs;
-select count(*) from public.audit_events;
+select count(*) as payment_events from public.payment_events;
+select count(*) as operation_jobs from public.operation_jobs;
+select count(*) as audit_events from public.audit_events;
 ```
 
 ```sql
@@ -77,19 +67,41 @@ select column_name
 from information_schema.columns
 where table_schema = 'public'
   and table_name = 'payments'
-  and column_name in ('idempotency_key','provider_event_id','reconciliation_status','provider_last_error','last_reconciled_at');
+  and column_name in (
+    'idempotency_key',
+    'provider_event_id',
+    'reconciliation_status',
+    'provider_last_error',
+    'last_reconciled_at'
+  )
+order by column_name;
 ```
 
-## 7. Staging reset/seed flow
-
-Requirements:
-
-- `STAGING_DATABASE_URL`
-- `psql` in PATH (or `PSQL_BIN`)
-
-Commands:
-
-```bash
-npm run db:staging:reset
-npm run db:staging:seed
+```sql
+select indexname
+from pg_indexes
+where schemaname = 'public'
+  and tablename in ('payments', 'payment_events', 'operation_jobs', 'audit_events')
+order by tablename, indexname;
 ```
+
+## 7. RLS expectations for first live tenant
+
+Required JWT claims:
+
+- `organization_id` for internal users
+- `organization_id`, `user_type=customer`, and `client_id` for portal users
+
+Deployment expectation:
+
+1. RLS enabled on launch-critical tables.
+2. Tenant select policies active.
+3. Portal self-access policies active.
+4. Service-role paths used by webhook/worker runtimes.
+
+## 8. Blockers (do not go live if true)
+
+- Missing migration bundle apply in production.
+- Any missing launch-critical table/column listed above.
+- RLS policies not enforced for tenant separation.
+- `organization_id` default values not replaced for live tenant writes.

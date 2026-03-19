@@ -10,6 +10,10 @@ npm run build
 
 Deploy `dist/` to your static hosting provider (Vercel/Netlify/CloudFront/etc.).
 
+Vercel config is included at repo root:
+
+- `vercel.json`
+
 ## Runtime behavior
 
 - App routes are client-side; configure SPA fallback to `index.html`.

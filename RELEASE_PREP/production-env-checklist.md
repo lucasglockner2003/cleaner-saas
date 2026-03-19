@@ -17,12 +17,14 @@
 - [ ] `STRIPE_WEBHOOK_SECRET` created for production endpoint.
 - [ ] `SUPABASE_SERVICE_ROLE_KEY` set in webhook/worker runtime only.
 - [ ] `PAYMENT_GATEWAY_AUTH_TOKEN` set in webhook runtime and matches frontend gateway token.
+- [ ] `APP_PAYMENT_WEBHOOK_URL` points to the deployed gateway endpoint.
 
 ## Validation commands
 
 - [ ] `npm run check:env:production` passes.
 - [ ] `npm run test:run` passes.
 - [ ] `npm run build` passes.
+- [ ] `npm run db:bundle:pilot` generated launch migration bundle.
 
 ## Safe launch posture
 

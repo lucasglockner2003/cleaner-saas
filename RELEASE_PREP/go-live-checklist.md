@@ -4,6 +4,7 @@
 
 - [ ] `RELEASE_PREP/production-env-checklist.md` complete.
 - [ ] `RELEASE_PREP/smoke-test-checklist.md` complete in staging within last 24h.
+- [ ] `npm run deploy:check:production` passes.
 - [ ] Critical runtime config report in app has zero blockers.
 - [ ] Last migration bundle reviewed and approved.
 - [ ] Rollback checkpoint (release tag + DB backup) recorded.

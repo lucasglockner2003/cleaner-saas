@@ -86,7 +86,36 @@ npm run worker:operations:example
 3. Confirm failed jobs move to `retry_scheduled` or `failed` with `error_message`.
 4. Confirm stale running jobs recover after lease expiry.
 
-## 6. Failed jobs and audit inspection
+## 6. Frontend health verification
+
+Checks:
+
+1. `/login` and `/portal/login` both render.
+2. Internal and portal login both succeed.
+3. Settings page shows no critical config blockers.
+4. Key pages load (`/schedule`, `/visits`, `/monetization`, `/communications`) without error boundary.
+
+## 7. Supabase and Stripe connectivity verification
+
+Supabase:
+
+1. Create/update one client in UI and refresh to confirm persistence.
+2. Verify tenant scope and organization id via SQL:
+
+```sql
+select organization_id, count(*) from public.clients group by 1;
+select count(*) from public.payment_events;
+select count(*) from public.operation_jobs;
+```
+
+Stripe:
+
+1. Send one Stripe test event to webhook endpoint.
+2. Confirm event lands in `payment_events`.
+3. Replay same event and confirm idempotent no-op.
+4. Run reconciliation cycle and confirm pending provider-backed payments settle.
+
+## 8. Failed jobs and audit inspection
 
 Inspect in app:
 
@@ -109,7 +138,7 @@ order by created_at desc
 limit 100;
 ```
 
-## 7. Incident response baseline
+## 9. Incident response baseline
 
 1. Pause scheduler when repeated failures appear.
 2. Keep webhook running to avoid event loss.

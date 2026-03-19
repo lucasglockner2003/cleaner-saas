@@ -27,7 +27,9 @@ This folder contains launch-ready database artifacts aligned with the current ap
 
 ## Rollout flow
 
-1. Apply migration in staging.
+1. Build migration bundle: `npm run db:bundle:pilot`.
+2. Apply migration in staging: `npm run db:staging:migrate`.
 2. Validate RLS with owner/ops/customer JWT claims.
-3. Run application in `VITE_DATA_PROVIDER=supabase`.
-4. Execute post-deploy checks from `docs/deployment/post-deploy-checks.md`.
+3. Apply migration in production: `npm run db:production:migrate`.
+4. Run application in `VITE_DATA_PROVIDER=supabase`.
+5. Execute post-deploy checks from `docs/deployment/post-deploy-checks.md`.

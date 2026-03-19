@@ -23,11 +23,15 @@ export function getArgValue(flagName) {
 }
 
 export function resolveDatabaseUrl() {
-  const fromArg = getArgValue("database-url");
+  return resolveDatabaseUrlByKey("STAGING_DATABASE_URL");
+}
+
+export function resolveDatabaseUrlByKey(envKey, argName = "database-url") {
+  const fromArg = getArgValue(argName);
   if (fromArg) {
     return fromArg;
   }
-  return String(process.env.STAGING_DATABASE_URL || "").trim();
+  return String(process.env[envKey] || "").trim();
 }
 
 export function runSqlFile({ label, filePath, databaseUrl, psqlBin = process.env.PSQL_BIN || "psql" }) {

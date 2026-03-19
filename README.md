@@ -177,6 +177,10 @@ Copy `.env.example` to `.env` and configure provider mode:
 - `docs/deployment/rollback-checklist.md`
 - `docs/deployment/schema-mismatch-audit.md`
 - `docs/deployment/deploy-command-templates.md`
+- `DEPLOY_NOW.md`
+- `STAGING_SMOKE_TEST.md`
+- `FIRST_COMPANY_ONBOARDING.md`
+- `PRODUCTION_ENV_TEMPLATE.md`
 - `RELEASE_PREP/README.md`
 - `RUNBOOK.md`
 - `PILOT_RUNBOOK.md`

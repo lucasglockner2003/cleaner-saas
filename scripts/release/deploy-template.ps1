@@ -8,19 +8,19 @@ $ErrorActionPreference = "Stop"
 Write-Host "[deploy] Starting deploy template for $Environment"
 
 if ($Environment -eq "staging") {
-  npm run check:env:staging
+  npm run deploy:check:staging
 } else {
-  npm run check:env:production
+  npm run deploy:check:production
 }
-
-npm run test:run
-npm run build
-npm run db:bundle:pilot
 
 Write-Host ""
 Write-Host "[deploy] Manual provider/runtime steps:"
 Write-Host "1. Apply Supabase migrations:"
-Write-Host "   supabase db push --linked"
+if ($Environment -eq "staging") {
+  Write-Host "   npm run db:staging:migrate"
+} else {
+  Write-Host "   npm run db:production:migrate"
+}
 Write-Host "2. Deploy Stripe webhook endpoint runtime with STRIPE_WEBHOOK_SECRET."
 Write-Host "3. Deploy operations worker runtime with scheduler trigger."
 Write-Host "4. Deploy frontend with environment file for $Environment."

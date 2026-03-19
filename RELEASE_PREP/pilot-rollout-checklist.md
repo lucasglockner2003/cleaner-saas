@@ -10,7 +10,7 @@
 
 ## Deployment sequence
 
-- [ ] Apply migration bundle: `npm run db:bundle:pilot` then `supabase db push --linked`.
+- [ ] Apply migration bundle: `npm run db:bundle:pilot` then `npm run db:staging:migrate` / `npm run db:production:migrate`.
 - [ ] Deploy webhook runtime (Stripe verifier + gateway forwarding).
 - [ ] Deploy operation worker runtime and scheduler.
 - [ ] Deploy frontend with pilot environment configuration.

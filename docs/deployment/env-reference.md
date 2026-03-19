@@ -39,7 +39,13 @@
 - `STRIPE_SECRET_KEY`
 - `STRIPE_WEBHOOK_SECRET`
 - `SUPABASE_SERVICE_ROLE_KEY`
-- worker scheduler credentials/tokens
+- `PAYMENT_GATEWAY_AUTH_TOKEN`
+- `APP_PAYMENT_WEBHOOK_URL`
+
+## DB script variables
+
+- `STAGING_DATABASE_URL` (required for `db:staging:*` scripts)
+- `PRODUCTION_DATABASE_URL` (required for `db:production:migrate`)
 
 ## Misconfiguration detection
 
@@ -56,3 +62,5 @@ Launch should be blocked when critical issues are present.
 npm run check:env:staging
 npm run check:env:production
 ```
+
+Production env check now runs in strict mode and fails when required server-side launch vars are missing.
