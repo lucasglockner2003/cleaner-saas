@@ -7,6 +7,7 @@ import { queueServiceCompletionEmail } from "../pipeline/completionPipelineServi
 import { COMMUNICATION_JOB_STATUS, COMMUNICATION_JOB_TYPE, listCommunicationJobs, updateCommunicationJob } from "../communications/communicationJobsService";
 import { changeInvoiceStatus, queueInvoiceEmailDispatch, runInvoiceDraftGenerationCycle } from "../pipeline/invoicePipelineService";
 import { createPaymentRecord } from "../payments/paymentsService";
+import { CLIENT_CSV_PILOT_SAMPLE, CLIENT_CSV_TEMPLATE } from "./pilotCsvSamples";
 
 const HEADER_ALIASES = {
   full_name: "full_name",
@@ -282,11 +283,11 @@ function isoAfterMinutes(iso, minutesToAdd) {
 }
 
 export function getClientCsvTemplate() {
-  return [
-    "full_name,phone,email,suburb,address,service_type,cleaning_frequency,estimated_duration_min,notes_summary,special_instructions,acquisition_source,status",
-    "\"Maria Carter\",\"+64 21 444 1001\",\"maria.new@example.com\",\"Ponsonby\",\"14 Norfolk St, Ponsonby, Auckland\",\"Regular Clean\",\"Weekly\",90,\"Prefers eco-friendly products\",\"Call before arrival\",\"referral\",\"active\"",
-    "\"John Foster\",\"+64 21 444 1002\",\"john.new@example.com\",\"Mount Eden\",\"22 Stokes Rd, Mount Eden, Auckland\",\"Regular Clean\",\"Fortnightly\",75,\"Focus kitchen and bathroom\",\"Alarm code on file\",\"google\",\"active\""
-  ].join("\n");
+  return CLIENT_CSV_TEMPLATE;
+}
+
+export function getClientCsvPilotSample() {
+  return CLIENT_CSV_PILOT_SAMPLE;
 }
 
 export function importClientsFromCsv(db, csvText) {

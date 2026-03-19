@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card } from "../../components/ui/Card";
 import { DataTable } from "../../components/ui/DataTable";
 import { EmptyState } from "../../components/ui/EmptyState";
@@ -13,6 +14,7 @@ import { ROLES } from "../../auth/roles";
 export function SchedulePage() {
   const { db, actions, mutationState } = useAppData();
   const { canAccess } = useAuth();
+  const navigate = useNavigate();
   const week = scheduleService.getWeeklySchedule(db);
   const stats = scheduleService.getScheduleQuickStats(db);
   const optimizationSignals = scheduleService.getWeeklyOptimizationSignals(db);
@@ -132,6 +134,16 @@ export function SchedulePage() {
         />
       </section>
 
+      {stats.total === 0 ? (
+        <Card title="No pilot schedule data yet" subtitle="Use Pilot Tools to bootstrap a workable dispatch week in one flow.">
+          <div className="inline-actions">
+            <button type="button" className="btn" onClick={() => navigate("/pilot-tools")}>
+              Open pilot tools
+            </button>
+          </div>
+        </Card>
+      ) : null}
+
       <section className="split-grid">
         <Card title="Dispatch legend">
           <div className="row-chip-list">
@@ -212,9 +224,13 @@ export function SchedulePage() {
           empty={
             <EmptyState
               title="No day summaries"
-              message="No schedule data available for this filter."
-              actionLabel="Reset filters"
+              message={stats.total === 0 ? "No schedule data available yet. Use Pilot Tools to generate a week." : "No schedule data available for this filter."}
+              actionLabel={stats.total === 0 ? "Open pilot tools" : "Reset filters"}
               onAction={() => {
+                if (stats.total === 0) {
+                  navigate("/pilot-tools");
+                  return;
+                }
                 setTeamFilter("all");
                 setRiskFilter("all");
               }}
@@ -266,9 +282,13 @@ export function SchedulePage() {
         ) : (
           <EmptyState
             title="No dispatch days match this filter"
-            message="Reset team/risk filters to restore the weekly board."
-            actionLabel="Reset filters"
+            message={stats.total === 0 ? "No schedule data available yet. Bootstrap from Pilot Tools first." : "Reset team/risk filters to restore the weekly board."}
+            actionLabel={stats.total === 0 ? "Open pilot tools" : "Reset filters"}
             onAction={() => {
+              if (stats.total === 0) {
+                navigate("/pilot-tools");
+                return;
+              }
               setTeamFilter("all");
               setRiskFilter("all");
             }}

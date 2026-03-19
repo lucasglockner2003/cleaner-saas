@@ -2,6 +2,7 @@ import {
   generateFakeVisitExecutions,
   generatePilotWeekSchedule,
   generateTestInvoices,
+  getClientCsvPilotSample,
   getClientCsvTemplate,
   importClientsFromCsv,
   simulateTestPayments
@@ -12,6 +13,10 @@ export function createPilotRepository() {
   return {
     getClientCsvTemplate() {
       return getClientCsvTemplate();
+    },
+
+    getClientCsvSample() {
+      return getClientCsvPilotSample();
     },
 
     importClientsCsv(db, csvText) {

@@ -179,5 +179,9 @@ Copy `.env.example` to `.env` and configure provider mode:
 - `docs/deployment/deploy-command-templates.md`
 - `RELEASE_PREP/README.md`
 - `RUNBOOK.md`
+- `PILOT_RUNBOOK.md`
+- `PILOT_CHECKLIST.md`
+- `OPERATOR_QUICK_START.md`
 - `PILOT_READINESS.md`
 - `AGENTS.md`
+- `samples/pilot-clients-sample.csv`

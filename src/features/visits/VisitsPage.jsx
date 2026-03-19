@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Card } from "../../components/ui/Card";
 import { DataTable } from "../../components/ui/DataTable";
 import { EmptyState } from "../../components/ui/EmptyState";
@@ -30,6 +31,7 @@ function communicationTone(status) {
 export function VisitsPage() {
   const { db, actions, mutationState } = useAppData();
   const { canAccess } = useAuth();
+  const navigate = useNavigate();
   const [statusFilter, setStatusFilter] = useState("all");
   const [dayFilter, setDayFilter] = useState("all");
   const [teamFilter, setTeamFilter] = useState("all");
@@ -203,6 +205,16 @@ export function VisitsPage() {
         />
       </section>
 
+      {visits.length === 0 ? (
+        <Card title="No visit records yet" subtitle="Generate pilot visits first so operators can rehearse start/finish workflows.">
+          <div className="inline-actions">
+            <button type="button" className="btn" onClick={() => navigate("/pilot-tools")}>
+              Open pilot tools
+            </button>
+          </div>
+        </Card>
+      ) : null}
+
       <section className="split-grid wide-right">
         <Card title="Visit history and metrics">
           <p className="muted">
@@ -215,9 +227,13 @@ export function VisitsPage() {
             empty={
               <EmptyState
                 title="No visits for this filter"
-                message="No visit records matched. Reset filters or check schedule assignment."
-                actionLabel="Reset filters"
+                message={visits.length === 0 ? "No visit records exist yet. Use Pilot Tools to generate pilot visits." : "No visit records matched. Reset filters or check schedule assignment."}
+                actionLabel={visits.length === 0 ? "Open pilot tools" : "Reset filters"}
                 onAction={() => {
+                  if (visits.length === 0) {
+                    navigate("/pilot-tools");
+                    return;
+                  }
                   setStatusFilter("all");
                   setDayFilter("all");
                   setTeamFilter("all");

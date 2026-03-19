@@ -7,6 +7,10 @@ export function ClientCsvImportPanel({ actions, mutationState, clientsCount }) {
   const [result, setResult] = useState(null);
   const [loadedFileName, setLoadedFileName] = useState("");
   const csvTemplate = useMemo(() => actions.getPilotCsvTemplate(), [actions]);
+  const csvSample = useMemo(
+    () => (typeof actions.getPilotCsvSample === "function" ? actions.getPilotCsvSample() : ""),
+    [actions]
+  );
   const isRunning = Boolean(mutationState.importPilotClientsCsv);
 
   async function handleLoadFile(event) {
@@ -27,6 +31,15 @@ export function ClientCsvImportPanel({ actions, mutationState, clientsCount }) {
     setResult(null);
   }
 
+  function handleLoadSample() {
+    if (!csvSample) {
+      return;
+    }
+    setCsvText(csvSample);
+    setLoadedFileName("pilot-clients-sample.csv");
+    setResult(null);
+  }
+
   function handleImport(event) {
     event.preventDefault();
     const runResult = actions.importPilotClientsCsv(csvText);
@@ -39,6 +52,9 @@ export function ClientCsvImportPanel({ actions, mutationState, clientsCount }) {
         <div className="inline-actions">
           <button type="button" className="btn btn-ghost" onClick={handleLoadTemplate}>
             Load template
+          </button>
+          <button type="button" className="btn btn-ghost" onClick={handleLoadSample} disabled={!csvSample}>
+            Load pilot sample
           </button>
           <label className="btn btn-ghost file-btn">
             Upload CSV

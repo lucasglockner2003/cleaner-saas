@@ -4,6 +4,7 @@ import { useAppData } from "../../hooks/useAppData";
 import { invoicesService } from "../../services";
 import { resolveOperationalDate } from "../../utils/operationsDate";
 import { ClientCsvImportPanel } from "./ClientCsvImportPanel";
+import { DemoModeHelperPanel } from "./DemoModeHelperPanel";
 import { WeekScheduleGeneratorPanel } from "./WeekScheduleGeneratorPanel";
 import { FakeVisitGeneratorPanel } from "./FakeVisitGeneratorPanel";
 import { TestInvoiceGeneratorPanel } from "./TestInvoiceGeneratorPanel";
@@ -27,6 +28,9 @@ export function PilotToolsPage() {
           These tools are designed for staging/pilot setup. Run them in sequence for fastest setup: CSV import, then week schedule,
           then fake visits, then invoice generation, then payment simulation.
         </p>
+        <p className="muted">
+          For live walkthroughs, use the Demo mode helper first, then validate from Schedule, Visits, and Monetization pages.
+        </p>
       </Card>
 
       <section className="stat-grid">
@@ -36,6 +40,7 @@ export function PilotToolsPage() {
         <StatCard label="Open invoices" value={openInvoices.length} hint={`Operational date ${operationalDate}`} />
       </section>
 
+      <DemoModeHelperPanel actions={actions} mutationState={mutationState} defaultDate={operationalDate} />
       <ClientCsvImportPanel actions={actions} mutationState={mutationState} clientsCount={db.clients.length} />
       <WeekScheduleGeneratorPanel actions={actions} mutationState={mutationState} activeClients={activeClients} />
       <FakeVisitGeneratorPanel actions={actions} mutationState={mutationState} defaultDate={operationalDate} />

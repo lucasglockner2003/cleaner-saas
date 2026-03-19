@@ -609,6 +609,9 @@ export function AppDataProvider({ children }) {
       getPilotCsvTemplate() {
         return repositories.pilot.getClientCsvTemplate();
       },
+      getPilotCsvSample() {
+        return repositories.pilot.getClientCsvSample();
+      },
       importPilotClientsCsv(csvText) {
         return runMutation(
           "importPilotClientsCsv",

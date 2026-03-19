@@ -4,11 +4,21 @@ import {
   generateFakeVisitExecutions,
   generatePilotWeekSchedule,
   generateTestInvoices,
+  getClientCsvPilotSample,
   importClientsFromCsv,
   simulateTestPayments
 } from "./pilotDataToolingService";
 
 describe("pilotDataToolingService", () => {
+  it("returns a non-empty pilot sample CSV", () => {
+    const sample = getClientCsvPilotSample();
+    const lines = sample.split("\n");
+
+    expect(lines.length).toBeGreaterThan(3);
+    expect(lines[0]).toContain("full_name");
+    expect(lines[0]).toContain("service_type");
+  });
+
   it("imports clients from CSV and applies inactive status when provided", () => {
     const db = createSeedDatabase();
     const csv = [
